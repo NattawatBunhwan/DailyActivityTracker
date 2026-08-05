@@ -1,0 +1,102 @@
+using DailyActivityTracker.Application.Features.Users.DTOs;
+using DailyActivityTracker.Application.Interfaces.Repositories;
+using DailyActivityTracker.Domain.Entities;
+using DailyActivityTracker.Application.Exceptions;
+
+namespace DailyActivityTracker.Application.Features.Users.Services;
+
+public class UserService : IUserService
+{
+    private readonly IUserRepository _userRepository;
+
+    public UserService(IUserRepository userRepository)
+    {
+        _userRepository = userRepository;
+    }
+
+    public async Task<UserResponse> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
+    {
+        var existingUser = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
+
+        if (existingUser is not null)
+        {
+            throw new EmailAlreadyExistsException(request.Email);
+        }
+
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+
+        var user = new User
+        {
+            Email = request.Email,
+            PasswordHash = passwordHash,
+            Role = "User",
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            Age = request.Age,
+            Occupation = request.Occupation
+        };
+
+        await _userRepository.AddAsync(user, cancellationToken);
+
+        return MapToResponse(user);
+    }
+
+    public async Task<List<UserResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    {
+        var users = await _userRepository.GetAllAsync(cancellationToken);
+
+        return users.Select(MapToResponse).ToList();
+    }
+
+    public async Task<UserResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+
+        return user is null ? throw new UserNotFoundException(id) : MapToResponse(user);
+    }
+
+    public async Task<UserResponse?> UpdateAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+
+        if (user is null)
+        {
+            throw new UserNotFoundException(id);
+        }
+
+        user.FirstName = request.FirstName;
+        user.LastName = request.LastName;
+        user.Age = request.Age;
+        user.Occupation = request.Occupation;
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+
+        return MapToResponse(user);
+    }
+
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+
+        if (user is null)
+        {
+            throw new UserNotFoundException(id);
+        }
+
+        await _userRepository.DeleteAsync(user, cancellationToken);
+
+        return true;
+    }
+
+    private static UserResponse MapToResponse(User user)
+    {
+        return new UserResponse
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Age = user.Age,
+            Occupation = user.Occupation
+        };
+    }
+}
