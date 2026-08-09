@@ -7,7 +7,6 @@ public class CreateActivityRequestValidator : AbstractValidator<CreateActivityRe
 {
     public CreateActivityRequestValidator()
     {
-        RuleFor(x => x.UserId).NotEmpty();
         RuleFor(x => x.Title).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.ActivityDate).NotEmpty();

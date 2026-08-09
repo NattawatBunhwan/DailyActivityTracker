@@ -18,6 +18,11 @@ public class UserRepository : IUserRepository
         return _dbContext.Users.FirstOrDefaultAsync(user => user.Id == id, cancellationToken);
     }
 
+    public Task<User?> GetByIdAndUserIdAsync(Guid userId, Guid currentUserId, CancellationToken cancellationToken = default)
+    {
+        return _dbContext.Users.FirstOrDefaultAsync(user => user.Id == userId && user.Id == currentUserId, cancellationToken);
+    }
+
     public Task<User?> GetByEmailAsync(string email, CancellationToken cancellationToken = default)
     {
         return _dbContext.Users.FirstOrDefaultAsync(user => user.Email == email, cancellationToken);

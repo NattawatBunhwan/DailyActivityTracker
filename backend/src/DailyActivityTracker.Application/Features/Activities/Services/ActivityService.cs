@@ -40,23 +40,23 @@ public class ActivityService : IActivityService
         return MapToResponse(activity);
     }
 
-    public async Task<List<ActivityResponse>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<List<ActivityResponse>> GetAllAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var activities = await _activityRepository.GetAllAsync(cancellationToken);
+        var activities = await _activityRepository.GetAllByUserIdAsync(userId, cancellationToken);
 
         return activities.Select(MapToResponse).ToList();
     }
 
-    public async Task<ActivityResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<ActivityResponse?> GetByIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default)
     {
-        var activity = await _activityRepository.GetByIdAsync(id, cancellationToken);
+        var activity = await _activityRepository.GetByIdAndUserIdAsync(activityId, userId, cancellationToken);
 
         return activity is null ? null : MapToResponse(activity);
     }
 
-    public async Task<ActivityResponse?> UpdateAsync(Guid id, UpdateActivityRequest request, CancellationToken cancellationToken = default)
+    public async Task<ActivityResponse?> UpdateAsync(Guid activityId, Guid userId, UpdateActivityRequest request, CancellationToken cancellationToken = default)
     {
-        var activity = await _activityRepository.GetByIdAsync(id, cancellationToken);
+        var activity = await _activityRepository.GetByIdAndUserIdAsync(activityId, userId, cancellationToken);
 
         if (activity is null)
         {
@@ -74,9 +74,9 @@ public class ActivityService : IActivityService
         return MapToResponse(activity);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default)
     {
-        var activity = await _activityRepository.GetByIdAsync(id, cancellationToken);
+        var activity = await _activityRepository.GetByIdAndUserIdAsync(activityId, userId, cancellationToken);
 
         if (activity is null)
         {

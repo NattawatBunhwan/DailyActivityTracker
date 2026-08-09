@@ -2,11 +2,14 @@ using DailyActivityTracker.Application.Features.Users.DTOs;
 using DailyActivityTracker.Application.Features.Users.Services;
 using DailyActivityTracker.Application.Exceptions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace DailyActivityTracker.Api.Controllers;
 
 [ApiController]
 [Route("api/users")]
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
@@ -17,6 +20,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost]
+    [AllowAnonymous]
     public async Task<ActionResult<UserResponse>> Create(
         CreateUserRequest request,
         CancellationToken cancellationToken = default)
@@ -34,21 +38,25 @@ public class UsersController : ControllerBase
         return Ok(users);
     }
 
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<UserResponse>> GetById(Guid id, CancellationToken cancellationToken = default)
+    [HttpGet("{userId:guid}")]
+    public async Task<ActionResult<UserResponse>> GetById(Guid userId, CancellationToken cancellationToken = default)
     {
-        var user = await _userService.GetByIdAsync(id, cancellationToken);
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        
+        var user = await _userService.GetByIdAsync(userId, currentUserId, cancellationToken);
 
         return Ok(user);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPut("{userId:guid}")]
     public async Task<ActionResult<UserResponse>> Update(
-        Guid id,
+        Guid userId,
         UpdateUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        var user = await _userService.UpdateAsync(id, request, cancellationToken);
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        var user = await _userService.UpdateAsync(userId, currentUserId, request, cancellationToken);
 
         if (user is null)
         {
@@ -58,10 +66,12 @@ public class UsersController : ControllerBase
         return Ok(user);
     }
 
-    [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    [HttpDelete("{userId:guid}")]
+    public async Task<IActionResult> Delete(Guid userId, CancellationToken cancellationToken = default)
     {
-        var deleted = await _userService.DeleteAsync(id, cancellationToken);
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        
+        var deleted = await _userService.DeleteAsync(userId, currentUserId, cancellationToken);
 
         if (!deleted)
         {

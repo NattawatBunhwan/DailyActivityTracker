@@ -48,20 +48,20 @@ public class UserService : IUserService
         return users.Select(MapToResponse).ToList();
     }
 
-    public async Task<UserResponse?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<UserResponse?> GetByIdAsync(Guid userId, Guid currentUserId, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        var user = await _userRepository.GetByIdAndUserIdAsync(userId, currentUserId, cancellationToken);
 
-        return user is null ? throw new UserNotFoundException(id) : MapToResponse(user);
+        return user is null ? throw new UserNotFoundException(userId) : MapToResponse(user);
     }
 
-    public async Task<UserResponse?> UpdateAsync(Guid id, UpdateUserRequest request, CancellationToken cancellationToken = default)
+    public async Task<UserResponse?> UpdateAsync(Guid userId, Guid currentUserId, UpdateUserRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        var user = await _userRepository.GetByIdAndUserIdAsync(userId, currentUserId, cancellationToken);
 
         if (user is null)
         {
-            throw new UserNotFoundException(id);
+            throw new UserNotFoundException(userId);
         }
 
         user.FirstName = request.FirstName;
@@ -74,13 +74,13 @@ public class UserService : IUserService
         return MapToResponse(user);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid userId, Guid currentUserId, CancellationToken cancellationToken = default)
     {
-        var user = await _userRepository.GetByIdAsync(id, cancellationToken);
+        var user = await _userRepository.GetByIdAndUserIdAsync(userId, currentUserId, cancellationToken);
 
         if (user is null)
         {
-            throw new UserNotFoundException(id);
+            throw new UserNotFoundException(userId);
         }
 
         await _userRepository.DeleteAsync(user, cancellationToken);

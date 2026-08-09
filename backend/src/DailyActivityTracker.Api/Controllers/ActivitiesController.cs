@@ -35,8 +35,8 @@ public class ActivitiesController : ControllerBase
     [HttpGet]
     public async Task<ActionResult<List<ActivityResponse>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var activities = await _activityService.GetAllAsync(cancellationToken);
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var activities = await _activityService.GetAllAsync(currentUserId, cancellationToken);
 
         return Ok(activities);
     }
@@ -44,7 +44,9 @@ public class ActivitiesController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ActivityResponse>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var activity = await _activityService.GetByIdAsync(id, cancellationToken);
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        var activity = await _activityService.GetByIdAsync(id, currentUserId, cancellationToken);
 
         if (activity is null)
         {
@@ -54,13 +56,15 @@ public class ActivitiesController : ControllerBase
         return Ok(activity);
     }
 
-    [HttpPut("{id:guid}")]
+    [HttpPut("{activityId:guid}")]
     public async Task<ActionResult<ActivityResponse>> Update(
-        Guid id,
+        Guid activityId,
         UpdateActivityRequest request,
         CancellationToken cancellationToken = default)
     {
-        var activity = await _activityService.UpdateAsync(id, request, cancellationToken);
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+
+        var activity = await _activityService.UpdateAsync(activityId, currentUserId, request, cancellationToken);
 
         if (activity is null)
         {
@@ -70,10 +74,12 @@ public class ActivitiesController : ControllerBase
         return Ok(activity);
     }
 
-    [HttpDelete("{id:guid}")]
-    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken = default)
+    [HttpDelete("{activityId:guid}")]
+    public async Task<IActionResult> Delete(Guid activityId, CancellationToken cancellationToken = default)
     {
-        var deleted = await _activityService.DeleteAsync(id, cancellationToken);
+        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        
+        var deleted = await _activityService.DeleteAsync(activityId, currentUserId, cancellationToken);
 
         if (!deleted)
         {

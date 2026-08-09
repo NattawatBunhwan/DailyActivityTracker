@@ -18,6 +18,16 @@ public class ActivityRepository : IActivityRepository
         return _dbContext.Activities.FirstOrDefaultAsync(activity => activity.Id == id, cancellationToken);
     }
 
+    public Task<Activity?> GetByIdAndUserIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        return _dbContext.Activities.FirstOrDefaultAsync(activity => activity.Id == activityId && activity.UserId == userId, cancellationToken);
+    }
+
+    public Task<List<Activity>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return _dbContext.Activities.Where(activity => activity.UserId == userId).ToListAsync(cancellationToken);
+    }
+
     public Task<List<Activity>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return _dbContext.Activities.ToListAsync(cancellationToken);
