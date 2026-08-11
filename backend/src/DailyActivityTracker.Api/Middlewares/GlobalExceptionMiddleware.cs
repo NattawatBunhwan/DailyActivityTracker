@@ -74,7 +74,8 @@ public class GlobalExceptionMiddleware
             var response = new ErrorResponse
             {
                 StatusCode = statusCode,
-                Message = ex.Message,
+                Message = statusCode == StatusCodes.Status500InternalServerError
+                            ? "An unexpected error occurred." : ex.Message,
                 Timestamp = DateTime.UtcNow
             };
 
