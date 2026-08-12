@@ -27,7 +27,7 @@ public class UsersController : ControllerBase
     {
         var user = await _userService.CreateAsync(request, cancellationToken);
 
-        return CreatedAtAction(nameof(GetById), new { id = user.Id }, user);
+        return CreatedAtAction(nameof(GetById), new { userId = user.Id }, user);
     }
 
     [HttpGet]

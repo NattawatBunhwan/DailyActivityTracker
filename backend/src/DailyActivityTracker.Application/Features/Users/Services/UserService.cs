@@ -16,18 +16,20 @@ public class UserService : IUserService
 
     public async Task<UserResponse> CreateAsync(CreateUserRequest request, CancellationToken cancellationToken = default)
     {
-        var existingUser = await _userRepository.GetByEmailAsync(request.Email, cancellationToken);
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+
+        var existingUser = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
 
         if (existingUser is not null)
         {
-            throw new EmailAlreadyExistsException(request.Email);
+            throw new EmailAlreadyExistsException(normalizedEmail);
         }
 
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
 
         var user = new User
         {
-            Email = request.Email,
+            Email = normalizedEmail,
             PasswordHash = passwordHash,
             Role = "User",
             FirstName = request.FirstName,
