@@ -1,8 +1,8 @@
 using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Application.Features.Activities.Services;
+using DailyActivityTracker.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 
 namespace DailyActivityTracker.Api.Controllers;
 
@@ -12,16 +12,18 @@ namespace DailyActivityTracker.Api.Controllers;
 public class ActivitiesController : ControllerBase
 {
     private readonly IActivityService _activityService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public ActivitiesController(IActivityService activityService)
+    public ActivitiesController(IActivityService activityService, ICurrentUserService currentUserService)
     {
         _activityService = activityService;
+        _currentUserService = currentUserService;
     }
 
     [HttpPost]
     public async Task<ActionResult<ActivityResponse>> Create(CreateActivityRequest request, CancellationToken cancellationToken = default)
     {
-        var userId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var userId = _currentUserService.UserId;
         var activity = await _activityService.CreateAsync(userId, request, cancellationToken);
 
         if (activity is null)
@@ -32,10 +34,11 @@ public class ActivitiesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = activity.Id }, activity);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<ActionResult<List<ActivityResponse>>> GetAll(CancellationToken cancellationToken = default)
     {
-        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserId = _currentUserService.UserId;
         var activities = await _activityService.GetAllAsync(currentUserId, cancellationToken);
 
         return Ok(activities);
@@ -44,7 +47,7 @@ public class ActivitiesController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<ActivityResponse>> GetById(Guid id, CancellationToken cancellationToken = default)
     {
-        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserId = _currentUserService.UserId;
 
         var activity = await _activityService.GetByIdAsync(id, currentUserId, cancellationToken);
 
@@ -62,7 +65,7 @@ public class ActivitiesController : ControllerBase
         UpdateActivityRequest request,
         CancellationToken cancellationToken = default)
     {
-        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserId = _currentUserService.UserId;
 
         var activity = await _activityService.UpdateAsync(activityId, currentUserId, request, cancellationToken);
 
@@ -77,7 +80,7 @@ public class ActivitiesController : ControllerBase
     [HttpDelete("{activityId:guid}")]
     public async Task<IActionResult> Delete(Guid activityId, CancellationToken cancellationToken = default)
     {
-        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserId = _currentUserService.UserId;
         
         var deleted = await _activityService.DeleteAsync(activityId, currentUserId, cancellationToken);
 

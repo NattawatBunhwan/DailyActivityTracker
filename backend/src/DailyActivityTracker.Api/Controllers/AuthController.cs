@@ -1,5 +1,6 @@
 using DailyActivityTracker.Application.DTOs.Auth;
 using DailyActivityTracker.Application.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DailyActivityTracker.Api.Controllers;
@@ -15,8 +16,9 @@ public class AuthController : ControllerBase
         _authService = authService;
     }
 
+    [AllowAnonymous]
     [HttpPost("login")]
-    public async Task<LoginResponse> Login([FromBody]LoginRequest request, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<LoginResponse>> Login([FromBody]LoginRequest request, CancellationToken cancellationToken = default)
     {
         var response = await _authService.LoginAsync(request, cancellationToken);
 

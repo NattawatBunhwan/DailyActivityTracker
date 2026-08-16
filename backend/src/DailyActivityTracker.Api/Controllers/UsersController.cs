@@ -1,9 +1,8 @@
 using DailyActivityTracker.Application.Features.Users.DTOs;
 using DailyActivityTracker.Application.Features.Users.Services;
-using DailyActivityTracker.Application.Exceptions;
+using DailyActivityTracker.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
 
 namespace DailyActivityTracker.Api.Controllers;
 
@@ -13,10 +12,12 @@ namespace DailyActivityTracker.Api.Controllers;
 public class UsersController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly ICurrentUserService _currentUserService;
 
-    public UsersController(IUserService userService)
+    public UsersController(IUserService userService, ICurrentUserService currentUserService)
     {
         _userService = userService;
+        _currentUserService = currentUserService;
     }
 
     [HttpPost]
@@ -30,6 +31,7 @@ public class UsersController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { userId = user.Id }, user);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<ActionResult<List<UserResponse>>> GetAll(CancellationToken cancellationToken = default)
     {
@@ -41,7 +43,7 @@ public class UsersController : ControllerBase
     [HttpGet("{userId:guid}")]
     public async Task<ActionResult<UserResponse>> GetById(Guid userId, CancellationToken cancellationToken = default)
     {
-        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserId = _currentUserService.UserId;
         
         var user = await _userService.GetByIdAsync(userId, currentUserId, cancellationToken);
 
@@ -54,7 +56,7 @@ public class UsersController : ControllerBase
         UpdateUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserId = _currentUserService.UserId;
 
         var user = await _userService.UpdateAsync(userId, currentUserId, request, cancellationToken);
 
@@ -69,7 +71,7 @@ public class UsersController : ControllerBase
     [HttpDelete("{userId:guid}")]
     public async Task<IActionResult> Delete(Guid userId, CancellationToken cancellationToken = default)
     {
-        var currentUserId = Guid.Parse(User.FindFirst(ClaimTypes.NameIdentifier)!.Value);
+        var currentUserId = _currentUserService.UserId;
         
         var deleted = await _userService.DeleteAsync(userId, currentUserId, cancellationToken);
 
