@@ -3,6 +3,7 @@ using DailyActivityTracker.Application.Features.Activities.Services;
 using DailyActivityTracker.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using DailyActivityTracker.Application.Common;
 
 namespace DailyActivityTracker.Api.Controllers;
 
@@ -34,7 +35,7 @@ public class ActivitiesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = activity.Id }, activity);
     }
 
-    [Authorize(Roles = "Admin")]
+    [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [HttpGet]
     public async Task<ActionResult<List<ActivityResponse>>> GetAll(CancellationToken cancellationToken = default)
     {
