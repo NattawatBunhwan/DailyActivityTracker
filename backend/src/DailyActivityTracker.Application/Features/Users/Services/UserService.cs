@@ -2,6 +2,7 @@ using DailyActivityTracker.Application.Features.Users.DTOs;
 using DailyActivityTracker.Application.Interfaces.Repositories;
 using DailyActivityTracker.Domain.Entities;
 using DailyActivityTracker.Application.Exceptions;
+using DailyActivityTracker.Domain.Common;
 
 namespace DailyActivityTracker.Application.Features.Users.Services;
 
@@ -31,7 +32,7 @@ public class UserService : IUserService
         {
             Email = normalizedEmail,
             PasswordHash = passwordHash,
-            Role = "User",
+            Role = Roles.User,
             FirstName = request.FirstName,
             LastName = request.LastName,
             Age = request.Age,

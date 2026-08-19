@@ -36,11 +36,12 @@ public class AuthService : IAuthService
             throw new InvalidCredentialsException();
         }
 
-        var token = _jwtTokenGenerator.GenerateToken(user);
+        var tokenResult = _jwtTokenGenerator.GenerateToken(user);
 
         return new LoginResponse
         {
-            Token = token
+            Token = tokenResult.Token,
+            ExpiresAt = tokenResult.ExpiresAt
         };
     }
 }

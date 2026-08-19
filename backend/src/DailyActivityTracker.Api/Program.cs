@@ -8,6 +8,7 @@ using FluentValidation;
 using DailyActivityTracker.Application.Features.Users.Validators;
 using Microsoft.EntityFrameworkCore;
 using DailyActivityTracker.Application.Common;
+using DailyActivityTracker.Domain.Common;
 using DailyActivityTracker.Application.Interfaces.Security;
 using DailyActivityTracker.Infrastructure.Security;
 using DailyActivityTracker.Application.Interfaces.Services;
@@ -86,7 +87,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(AuthorizationPolicies.AdminOnly, policy => policy.RequireRole("Admin"));
+    options.AddPolicy(AuthorizationPolicies.AdminOnly, policy => policy.RequireRole(Roles.Admin));
 });
 
 var app = builder.Build();

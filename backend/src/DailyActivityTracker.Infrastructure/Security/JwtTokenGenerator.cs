@@ -18,7 +18,7 @@ public class JwtTokenGenerator : IJwtTokenGenerator
         _jwtSettings = options.Value;
     }
 
-    public string GenerateToken(User user)
+    public TokenResult GenerateToken(User user)
     {
         var claims = new[]
         {
@@ -31,16 +31,22 @@ public class JwtTokenGenerator : IJwtTokenGenerator
     
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
+        var expiresAt = DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes);
+
         var token = new JwtSecurityToken(
             issuer: _jwtSettings.Issuer,
             audience: _jwtSettings.Audience,
             claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(_jwtSettings.ExpirationMinutes),
+            expires: expiresAt,
             signingCredentials: credentials
         );
 
         var tokenHandler = new JwtSecurityTokenHandler();
-        
-        return tokenHandler.WriteToken(token);
+
+        return new TokenResult
+        {
+            Token = tokenHandler.WriteToken(token),
+            ExpiresAt = expiresAt
+        };
     }
 }
