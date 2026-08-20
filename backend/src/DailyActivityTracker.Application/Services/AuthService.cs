@@ -66,21 +66,12 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
-Console.WriteLine("Incoming:");
-Console.WriteLine(request.RefreshToken);
-
-
         var refreshToken = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
 
         if (refreshToken is null)
         {
             throw new InvalidCredentialsException();
         }
-
-Console.WriteLine("Before:");
-Console.WriteLine(refreshToken.Token);
-Console.WriteLine(refreshToken.IsRevoked);
-
         if (refreshToken.IsRevoked)
         {
             throw new InvalidCredentialsException();
@@ -111,16 +102,8 @@ Console.WriteLine(refreshToken.IsRevoked);
 
         refreshToken.IsRevoked = true;
 
-Console.WriteLine("After:");
-Console.WriteLine(refreshToken.IsRevoked);
-
         await _refreshTokenRepository.AddAsync(newRefreshToken, cancellationToken);
         await _refreshTokenRepository.SaveChangesAsync(cancellationToken); 
-
-var check = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
-
-Console.WriteLine("Database:");
-Console.WriteLine(check!.IsRevoked);
 
         return new LoginResponse
         {
