@@ -19,4 +19,6 @@ public class User : BaseEntity
     public string Role { get; set; } = "User";
 
     public ICollection<Activity> Activities { get; set; } = new List<Activity>();
+
+    public ICollection<RefreshToken> RefreshTokens { get; set; } = new List<RefreshToken>();
 }
