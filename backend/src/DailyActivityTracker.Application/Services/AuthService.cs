@@ -70,15 +70,15 @@ public class AuthService : IAuthService
 
         if (refreshToken is null)
         {
-            throw new InvalidCredentialsException();
+            throw new RefreshTokenExpiredException();
         }
         if (refreshToken.IsRevoked)
         {
-            throw new InvalidCredentialsException();
+            throw new RefreshTokenExpiredException();
         }
         if (refreshToken.ExpiresAt <= DateTime.UtcNow)
         {
-            throw new InvalidCredentialsException();
+            throw new RefreshTokenExpiredException();
         }
 
         var user = await _userRepository.GetByIdAsync(refreshToken.UserId, cancellationToken);
