@@ -113,6 +113,35 @@ public class AuthService : IAuthService
         };
     }
     
+    public async Task LogoutAsync(LogoutRequest request, CancellationToken cancellationToken = default)
+    {
+        var refreshToken = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
+
+        if (refreshToken is null)
+        {
+            throw new RefreshTokenExpiredException();
+        }
+        if (refreshToken.IsRevoked)
+        {
+            throw new RefreshTokenExpiredException();
+        }
+        if (refreshToken.ExpiresAt <= DateTime.UtcNow)
+        {
+            throw new RefreshTokenExpiredException();
+        }
+
+        var user = await _userRepository.GetByIdAsync(refreshToken.UserId, cancellationToken);
+
+        if (user is null)
+        {
+            throw new InvalidCredentialsException();
+        }
+
+        refreshToken.IsRevoked = true;
+
+        await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+    }
+
     private static string GenerateRefreshToken()
     {
         return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));

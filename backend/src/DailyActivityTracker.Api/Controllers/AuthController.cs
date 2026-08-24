@@ -33,4 +33,13 @@ public class AuthController : ControllerBase
 
         return Ok(response);
     }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody]LogoutRequest request, CancellationToken cancellationToken)
+    {
+        await _authService.LogoutAsync(request, cancellationToken);
+
+        return NoContent();
+    }
 }
