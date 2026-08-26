@@ -9,5 +9,7 @@ public interface IAuthService
     Task<LoginResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default);
 
     Task LogoutAsync(LogoutRequest request, CancellationToken cancellationToken = default);
+
+    Task<MeResponse> GetMeAsync(CancellationToken cancellationToken = default);
 }
 

@@ -16,11 +16,14 @@ public class AuthService : IAuthService
 
     private readonly IRefreshTokenRepository _refreshTokenRepository;
 
-    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator, IRefreshTokenRepository refreshTokenRepository)
+    private readonly ICurrentUserService _currentUserService;
+
+    public AuthService(IUserRepository userRepository, IJwtTokenGenerator jwtTokenGenerator, IRefreshTokenRepository refreshTokenRepository, ICurrentUserService currentUserService)
     {
         _userRepository = userRepository;
         _jwtTokenGenerator = jwtTokenGenerator;
         _refreshTokenRepository = refreshTokenRepository;
+        _currentUserService = currentUserService;
     }
 
     public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
@@ -140,6 +143,18 @@ public class AuthService : IAuthService
         refreshToken.IsRevoked = true;
 
         await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+    }
+
+    public Task<MeResponse> GetMeAsync(CancellationToken cancellationToken = default)
+    {
+        var response = new MeResponse
+        {
+            UserId = _currentUserService.UserId,
+            Email = _currentUserService.Email,
+            Role = _currentUserService.Role
+        };
+
+        return Task.FromResult(response);
     }
 
     private static string GenerateRefreshToken()

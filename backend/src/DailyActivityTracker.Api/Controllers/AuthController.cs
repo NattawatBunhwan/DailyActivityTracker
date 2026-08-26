@@ -42,4 +42,13 @@ public class AuthController : ControllerBase
 
         return NoContent();
     }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<ActionResult<MeResponse>> GetMe(CancellationToken cancellationToken)
+    {
+        var response = await _authService.GetMeAsync(cancellationToken);
+
+        return Ok(response);
+    }
 }
