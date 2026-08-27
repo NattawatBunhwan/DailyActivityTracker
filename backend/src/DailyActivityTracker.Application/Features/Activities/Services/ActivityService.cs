@@ -65,7 +65,7 @@ public class ActivityService : IActivityService
 
         activity.Title = request.Title;
         activity.Description = request.Description;
-        activity.ActivityDate = request.ActivityDate;
+        activity.ActivityDate = DateTime.SpecifyKind(request.ActivityDate, DateTimeKind.Utc);
         activity.Status = request.Status;
         activity.Priority = request.Priority;
 

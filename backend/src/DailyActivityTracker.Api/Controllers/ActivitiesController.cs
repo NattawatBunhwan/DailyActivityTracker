@@ -25,12 +25,8 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<ActivityResponse>> Create(CreateActivityRequest request, CancellationToken cancellationToken = default)
     {
         var userId = _currentUserService.UserId;
+        
         var activity = await _activityService.CreateAsync(userId, request, cancellationToken);
-
-        if (activity is null)
-        {
-            return BadRequest("User does not exist.");
-        }
 
         return CreatedAtAction(nameof(GetById), new { id = activity.Id }, activity);
     }
@@ -40,6 +36,7 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<List<ActivityResponse>>> GetAll(CancellationToken cancellationToken = default)
     {
         var currentUserId = _currentUserService.UserId;
+
         var activities = await _activityService.GetAllAsync(currentUserId, cancellationToken);
 
         return Ok(activities);
