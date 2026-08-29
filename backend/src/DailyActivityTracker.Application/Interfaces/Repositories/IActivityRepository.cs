@@ -1,3 +1,4 @@
+using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Domain.Entities;
 
 namespace DailyActivityTracker.Application.Interfaces.Repositories;
@@ -8,7 +9,7 @@ public interface IActivityRepository
 
     Task<Activity?> GetByIdAndUserIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default);
 
-    Task<List<Activity>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+    Task<List<Activity>> GetAllByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
     
     Task<List<Activity>> GetAllAsync(CancellationToken cancellationToken = default);
 

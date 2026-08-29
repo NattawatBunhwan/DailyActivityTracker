@@ -40,9 +40,9 @@ public class ActivityService : IActivityService
         return MapToResponse(activity);
     }
 
-    public async Task<List<ActivityResponse>> GetAllAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<List<ActivityResponse>> GetAllAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
-        var activities = await _activityRepository.GetAllByUserIdAsync(userId, cancellationToken);
+        var activities = await _activityRepository.GetAllByUserIdAsync(userId, query, cancellationToken);
 
         return activities.Select(MapToResponse).ToList();
     }

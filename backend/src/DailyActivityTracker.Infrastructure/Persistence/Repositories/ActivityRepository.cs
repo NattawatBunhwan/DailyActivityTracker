@@ -1,3 +1,4 @@
+using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Application.Interfaces.Repositories;
 using DailyActivityTracker.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -23,9 +24,9 @@ public class ActivityRepository : IActivityRepository
         return _dbContext.Activities.FirstOrDefaultAsync(activity => activity.Id == activityId && activity.UserId == userId, cancellationToken);
     }
 
-    public Task<List<Activity>> GetAllByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    public Task<List<Activity>> GetAllByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
-        return _dbContext.Activities.Where(activity => activity.UserId == userId).ToListAsync(cancellationToken);
+        return _dbContext.Activities.Where(activity => activity.UserId == userId).Skip((query.Page - 1)* query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
     }
 
     public Task<List<Activity>> GetAllAsync(CancellationToken cancellationToken = default)
