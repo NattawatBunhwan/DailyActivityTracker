@@ -26,7 +26,17 @@ public class ActivityRepository : IActivityRepository
 
     public Task<List<Activity>> GetAllByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
-        return _dbContext.Activities.Where(activity => activity.UserId == userId).Skip((query.Page - 1)* query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
+        var activities = _dbContext.Activities.Where(activity => activity.UserId == userId);
+
+        if (query.Status.HasValue)
+        {
+            activities = activities.Where(x => x.Status == query.Status);
+        }
+        if (query.Priority.HasValue)
+        {
+            activities = activities.Where(x => x.Priority == query.Priority);
+        }
+        return activities.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
     }
 
     public Task<List<Activity>> GetAllAsync(CancellationToken cancellationToken = default)

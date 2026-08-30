@@ -2,8 +2,8 @@ namespace DailyActivityTracker.Domain.Enums;
 
 public enum ActivityStatus
 {
-    Pending,
-    InProgress,
-    Completed,
-    Cancelled
+    Pending = 1,
+    InProgress = 2,
+    Completed = 3,
+    Cancelled = 4
 }
