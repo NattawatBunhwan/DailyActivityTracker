@@ -36,6 +36,31 @@ public class ActivityRepository : IActivityRepository
         {
             activities = activities.Where(x => x.Priority == query.Priority);
         }
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            activities = activities.Where(x => EF.Functions.ILike(x.Title, $"%{query.Search}%") || (x.Description != null && EF.Functions.ILike(x.Description, $"%{query.Search}%")));
+        }
+        activities = query.SortBy?.ToLower() switch
+        {
+            "title" => query.Descending
+                ? activities.OrderByDescending(x => x.Title)
+                : activities.OrderBy(x => x.Title),
+
+            "status" => query.Descending
+                ? activities.OrderByDescending(x => x.Status)
+                : activities.OrderBy(x => x.Status),
+
+            "priority" => query.Descending
+                ? activities.OrderByDescending(x => x.Priority)
+                : activities.OrderBy(x => x.Priority),
+
+            "activitydate" => query.Descending
+                ? activities.OrderByDescending(x => x.ActivityDate)
+                : activities.OrderBy(x => x.ActivityDate),
+
+            _ => query.Descending ? activities.OrderByDescending(x => x.ActivityDate) : activities.OrderBy(x => x.ActivityDate)
+        };
+
         return activities.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
     }
 
