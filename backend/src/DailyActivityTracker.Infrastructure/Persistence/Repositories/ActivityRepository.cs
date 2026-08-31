@@ -26,20 +26,8 @@ public class ActivityRepository : IActivityRepository
 
     public Task<List<Activity>> GetAllByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
-        var activities = _dbContext.Activities.Where(activity => activity.UserId == userId);
+        var activities = ApplyFilters(userId, query);
 
-        if (query.Status.HasValue)
-        {
-            activities = activities.Where(x => x.Status == query.Status);
-        }
-        if (query.Priority.HasValue)
-        {
-            activities = activities.Where(x => x.Priority == query.Priority);
-        }
-        if (!string.IsNullOrWhiteSpace(query.Search))
-        {
-            activities = activities.Where(x => EF.Functions.ILike(x.Title, $"%{query.Search}%") || (x.Description != null && EF.Functions.ILike(x.Description, $"%{query.Search}%")));
-        }
         activities = query.SortBy?.ToLower() switch
         {
             "title" => query.Descending
@@ -69,6 +57,11 @@ public class ActivityRepository : IActivityRepository
         return _dbContext.Activities.ToListAsync(cancellationToken);
     }
 
+    public Task<int> CountByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    {
+        return ApplyFilters(userId, query).CountAsync(cancellationToken);
+    }
+
     public async Task AddAsync(Activity activity, CancellationToken cancellationToken = default)
     {
         await _dbContext.Activities.AddAsync(activity, cancellationToken);
@@ -84,5 +77,27 @@ public class ActivityRepository : IActivityRepository
     {
         _dbContext.Activities.Remove(activity);
         await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private IQueryable<Activity> ApplyFilters(Guid userId, ActivityQueryParameters query)
+    {
+        var activities = _dbContext.Activities.Where(activity => activity.UserId == userId);
+        
+        if (query.Status.HasValue)
+        {
+            activities = activities.Where(x => x.Status == query.Status);
+        }
+
+        if (query.Priority.HasValue)
+        {
+            activities = activities.Where(x => x.Priority == query.Priority);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            activities = activities.Where(x => EF.Functions.ILike(x.Title, $"%{query.Search}%") || (x.Description != null && EF.Functions.ILike(x.Description, $"%{query.Search}%")));
+        }
+
+        return activities;
     }
 }

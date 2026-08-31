@@ -1,3 +1,4 @@
+using DailyActivityTracker.Application.Common;
 using DailyActivityTracker.Application.Exceptions;
 using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Application.Interfaces.Repositories;
@@ -40,11 +41,20 @@ public class ActivityService : IActivityService
         return MapToResponse(activity);
     }
 
-    public async Task<List<ActivityResponse>> GetAllAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    public async Task<PagedResponse<ActivityResponse>> GetAllAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
         var activities = await _activityRepository.GetAllByUserIdAsync(userId, query, cancellationToken);
 
-        return activities.Select(MapToResponse).ToList();
+        var totalCount = await _activityRepository.CountByUserIdAsync(userId, query, cancellationToken);
+
+        return new PagedResponse<ActivityResponse>
+        {
+            Items = activities.Select(MapToResponse).ToList(),
+            Page = query.Page,
+            PageSize = query.PageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling((double)totalCount / query.PageSize)
+        };
     }
 
     public async Task<ActivityResponse?> GetByIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default)

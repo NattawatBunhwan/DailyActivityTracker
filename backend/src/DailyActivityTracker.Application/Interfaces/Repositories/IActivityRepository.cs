@@ -13,6 +13,8 @@ public interface IActivityRepository
     
     Task<List<Activity>> GetAllAsync(CancellationToken cancellationToken = default);
 
+    Task<int> CountByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
+
     Task AddAsync(Activity activity, CancellationToken cancellationToken = default);
 
     Task UpdateAsync(Activity activity, CancellationToken cancellationToken = default);

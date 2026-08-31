@@ -33,7 +33,7 @@ public class ActivitiesController : ControllerBase
 
     [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [HttpGet]
-    public async Task<ActionResult<List<ActivityResponse>>> GetAll([FromQuery] ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<PagedResponse<ActivityResponse>>> GetAll([FromQuery] ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
         var currentUserId = _currentUserService.UserId;
 
