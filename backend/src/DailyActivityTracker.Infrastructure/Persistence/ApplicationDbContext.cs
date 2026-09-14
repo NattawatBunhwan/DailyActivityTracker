@@ -1,3 +1,4 @@
+using DailyActivityTracker.Domain.Common;
 using DailyActivityTracker.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,5 +28,25 @@ public class ApplicationDbContext : DbContext
             .WithMany(user => user.RefreshTokens)
             .HasForeignKey(refreshToken => refreshToken.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+
+        foreach (var item in ChangeTracker.Entries<BaseEntity>())
+        {
+            if (item.State == EntityState.Added)
+            {
+                item.Entity.CreatedAt = now;
+                item.Entity.UpdatedAt = null;
+            } else if (item.State == EntityState.Modified)
+            {
+                item.Entity.UpdatedAt = now;
+                item.Property(x => x.CreatedAt).IsModified = false;
+            }
+        }
+
+        return await base.SaveChangesAsync(cancellationToken);
     }
 }
