@@ -27,27 +27,7 @@ public class ActivityRepository : IActivityRepository
     public Task<List<Activity>> GetAllByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
         var activities = ApplyFilters(userId, query);
-
-        activities = query.SortBy?.ToLower() switch
-        {
-            "title" => query.Descending
-                ? activities.OrderByDescending(x => x.Title)
-                : activities.OrderBy(x => x.Title),
-
-            "status" => query.Descending
-                ? activities.OrderByDescending(x => x.Status)
-                : activities.OrderBy(x => x.Status),
-
-            "priority" => query.Descending
-                ? activities.OrderByDescending(x => x.Priority)
-                : activities.OrderBy(x => x.Priority),
-
-            "activitydate" => query.Descending
-                ? activities.OrderByDescending(x => x.ActivityDate)
-                : activities.OrderBy(x => x.ActivityDate),
-
-            _ => query.Descending ? activities.OrderByDescending(x => x.ActivityDate) : activities.OrderBy(x => x.ActivityDate)
-        };
+        activities = ApplySorting(activities, query);
 
         return activities.Skip((query.Page - 1) * query.PageSize).Take(query.PageSize).ToListAsync(cancellationToken);
     }
@@ -99,5 +79,29 @@ public class ActivityRepository : IActivityRepository
         }
 
         return activities;
+    }
+
+    private IQueryable<Activity> ApplySorting(IQueryable<Activity> activities, ActivityQueryParameters query)
+    {
+        return query.SortBy?.ToLower() switch
+        {
+            "title" => query.Descending
+                ? activities.OrderByDescending(x => x.Title)
+                : activities.OrderBy(x => x.Title),
+
+            "status" => query.Descending
+                ? activities.OrderByDescending(x => x.Status)
+                : activities.OrderBy(x => x.Status),
+
+            "priority" => query.Descending
+                ? activities.OrderByDescending(x => x.Priority)
+                : activities.OrderBy(x => x.Priority),
+
+            "activitydate" => query.Descending
+                ? activities.OrderByDescending(x => x.ActivityDate)
+                : activities.OrderBy(x => x.ActivityDate),
+
+            _ => query.Descending ? activities.OrderByDescending(x => x.ActivityDate) : activities.OrderBy(x => x.ActivityDate)
+        };
     }
 }
