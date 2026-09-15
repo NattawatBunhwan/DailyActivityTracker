@@ -18,13 +18,13 @@ public class RefreshTokenRepository : IRefreshTokenRepository
         await _context.RefreshTokens.AddAsync(refreshToken, cancellationToken);
     }
 
-    public async Task<RefreshToken?> GetByTokenAsync(string token, CancellationToken cancellationToken = default)
+    public Task<RefreshToken?> GetByTokenAsync(string token, CancellationToken cancellationToken = default)
     {
-        return await _context.RefreshTokens.FirstOrDefaultAsync(refreshtoken => refreshtoken.Token == token, cancellationToken);
+        return _context.RefreshTokens.FirstOrDefaultAsync(refreshtoken => refreshtoken.Token == token, cancellationToken);
     }
 
-    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
+    public Task SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        await _context.SaveChangesAsync(cancellationToken);
+        return _context.SaveChangesAsync(cancellationToken);
     }
 }
