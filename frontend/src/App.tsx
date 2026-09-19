@@ -1,12 +1,16 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Header from './components/Header'
 import ActivityCard from './components/ActivityCard'
 import type { Activity } from './types/activity'
 import './App.css'
+import LoginForm from './components/LoginForm'
 
 function App() {
   const [count, setCount] = useState(0)
   const [name, setName] = useState('')
+  useEffect(() => {
+    document.title = name || 'Daily Activity Tracker'
+  }, [name])
   const activities: Activity[] = [
     {
       id: 1,
@@ -49,6 +53,8 @@ function App() {
           activity={activity}
         />
       ))}
+
+      <LoginForm/>
     </main>
   )
 }
