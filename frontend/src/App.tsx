@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react'
 import Header from './components/Header'
-import ActivityCard from './components/ActivityCard'
-import type { Activity } from './types/activity'
 import './App.css'
 import LoginForm from './components/LoginForm'
+import useAuth from './hooks/useAuth'
+import Activities from './components/Activities'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -11,20 +11,7 @@ function App() {
   useEffect(() => {
     document.title = name || 'Daily Activity Tracker'
   }, [name])
-  const activities: Activity[] = [
-    {
-      id: 1,
-      title: "อ่านหนังสือ",
-      priority: "High",
-      status: "In Progress",
-    },
-    {
-      id: 2,
-      title: "วิ่งออกกำลังกาย",
-      priority: "Medium",
-      status: "Pending",
-    }
-  ] 
+  const auth = useAuth()
   
   return (
     <main>
@@ -47,14 +34,12 @@ function App() {
 
       <p>Hello, {name}</p>
 
-      {activities.map((activity) => (
-        <ActivityCard
-          key={activity.id}
-          activity={activity}
-        />
-      ))}
+      <p>
+        {auth.isAuthenticated ? "Logged in" : "Not logged in"}
+      </p>
 
-      <LoginForm/>
+      {auth.isAuthenticated ? <Activities/> : <LoginForm/>}
+
     </main>
   )
 }

@@ -1,28 +1,13 @@
 import { useState } from "react"
-import type { Activity } from "../types/activity"
-import ActivityList from "./ActivityList"
-
-type LoginResponse = {
-    token: string
-    expiresAt: string
-    refreshToken: string
-}
-
-type ActivitiesResponse = {
-    page: number
-    pageSize: number
-    totalCount: number
-    totalPages: number
-    items: Activity[]
-}
+import { login } from "../api/authApi"
+import useAuth from "../hooks/useAuth"
 
 function LoginForm() {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
-    const [token, setToken] = useState('')
-    const [activities, setActivities] = useState<Activity[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+    const auth = useAuth()
 
     return (
         <div>
@@ -41,8 +26,6 @@ function LoginForm() {
 
             {isLoading ? (<p>Loading...</p>) : (<button onClick={handleLogin}>Login</button>)}
             {error && <p>{error}</p>}
-
-            <ActivityList activities={activities} />
         </div>
     )
     
@@ -50,42 +33,11 @@ function LoginForm() {
         setError('')
         setIsLoading(true)
         
-        try {
-            const response = await fetch('https://localhost:7127/api/Auth/login', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email,
-                    password,
-                })
-            })
-
-            if (!response.ok) {
-                setError('Login failed')
-                return
-            }
-
-            const data: LoginResponse = await response.json()
-
-            setToken(data.token)
-
-            const activitiesResponse = await fetch('https://localhost:7127/api/Activities', {
-                method: 'GET',
-                headers: {
-                    Authorization: `Bearer ${data.token}`,
-                },
-            })
-
-            if (!activitiesResponse.ok) {
-                setError('Failed to load activities.')
-                return
-            }
-
-            const activitiesData: ActivitiesResponse = await activitiesResponse.json()
-
-            setActivities(activitiesData.items)
+        try {  
+            const loginData = await login({ email, password })
+    
+            auth.setIsAuthenticated(true)
+            auth.setToken(loginData.token)
         } catch {
             setError('Unable to connect to the server')
         } finally {
@@ -93,6 +45,5 @@ function LoginForm() {
         }
     }
 }
-
 
 export default LoginForm
