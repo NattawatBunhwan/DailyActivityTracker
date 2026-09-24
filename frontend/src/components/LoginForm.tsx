@@ -38,6 +38,8 @@ function LoginForm() {
     
             auth.setIsAuthenticated(true)
             auth.setToken(loginData.token)
+            auth.setExpiresAt(loginData.expiresAt)
+            auth.setRefreshToken(loginData.refreshToken)
         } catch {
             setError('Unable to connect to the server')
         } finally {

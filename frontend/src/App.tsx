@@ -40,8 +40,19 @@ function App() {
 
       {auth.isAuthenticated ? <Activities/> : <LoginForm/>}
 
+      {auth.isAuthenticated && (
+        <button onClick={handleLogout}>
+          Logout
+        </button>
+      )}
     </main>
   )
+
+  function handleLogout() {
+    if (window.confirm("Are you sure you want to logout")) {
+      auth.logout()
+    }
+  }
 }
 
 export default App
