@@ -31,6 +31,10 @@ public class ActivitiesController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = activity.Id }, activity);
     }
 
+    [ProducesResponseType(typeof(PagedResponse<ActivityResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [Authorize(Policy = AuthorizationPolicies.AdminOnly)]
     [HttpGet]
     public async Task<ActionResult<PagedResponse<ActivityResponse>>> GetAll([FromQuery] ActivityQueryParameters query, CancellationToken cancellationToken = default)
