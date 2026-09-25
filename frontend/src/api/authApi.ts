@@ -49,3 +49,20 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResp
 
     return data
 }
+
+export async function logoutFromServer(token: string, refreshToken: string) {
+    const response = await fetch('https://localhost:7127/api/Auth/logout', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+            refreshToken
+        })
+    })
+
+    if (!response.ok) {
+        throw new Error("Failed to logout from server");
+    }
+}

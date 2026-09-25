@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, type ReactNode } from "react";
-import { refreshAccessToken } from "../api/authApi";
+import { logoutFromServer, refreshAccessToken } from "../api/authApi";
 
 type AuthProviderProps = {
     children: ReactNode
@@ -25,11 +25,17 @@ function AuthProvider({ children }: AuthProviderProps) {
     const [refreshToken, setRefreshToken] = useState('')
     const [expiresAt, setExpiresAt] = useState('')
 
-    function logout() {
-        setIsAuthenticated(false)
-        setToken('')
-        setExpiresAt('')
-        setRefreshToken('')
+    async function logout() {
+        try {
+            await logoutFromServer(token, refreshToken)
+        } catch (error) {
+            console.error('Logout failed:',error)
+        } finally {
+            setIsAuthenticated(false)
+            setToken('')
+            setExpiresAt('')
+            setRefreshToken('')
+        }
     }
 
     useEffect(() => {
@@ -51,9 +57,8 @@ function AuthProvider({ children }: AuthProviderProps) {
                 setExpiresAt(data.expiresAt)
                 setRefreshToken(data.refreshToken)
             } catch {
-                logout()
-            }
-            
+                await logout()
+            }    
         }
 
         if (delay <= 0) {
