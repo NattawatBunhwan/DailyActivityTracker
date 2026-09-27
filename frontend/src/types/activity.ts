@@ -18,3 +18,27 @@ export type Activity = {
     status: ActivityStatus
     priority: ActivityPriority
 }
+
+export type CreateActivityRequest = {
+    title: string
+    description: string | null
+    activityDate: string
+    status: ActivityStatus
+    priority: ActivityPriority
+}
+
+export type UpdateActivityRequest = {
+    title: string
+    description: string | null
+    activityDate: string
+    status: ActivityStatus
+    priority: ActivityPriority
+}
+
+export type ActivitiesResponse = {
+    page: number
+    pageSize: number
+    totalCount: number
+    totalPages: number
+    items: Activity[]
+}
