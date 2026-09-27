@@ -7,21 +7,56 @@ import useAuth from "../hooks/useAuth";
 function Activities() {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
+    const [isLoading, setIsLoading] = useState(false)
+    const [error, setError] = useState<string | null>(null)
 
-    useEffect(() => {
-        async function loadActivities() {
-            if (auth.token) {
-                const data = await getActivities(auth.token)
+    async function loadActivities(token: string) {
+        setError(null)
+        setIsLoading(true)
 
+        try {
+            if (token) {
+                const data = await getActivities(token)
                 setActivities(data.items)
             }
-        }
-        
-        loadActivities()
+        } catch {
+            setError("Failed to load activities.")
+        } finally {
+            setIsLoading(false)
+        }        
+    }
+
+    useEffect(() => {
+        loadActivities(auth.token)
     }, [auth.token])
 
+    if (isLoading) {
+        return <p>Loading activities...</p>
+    }
+
+    if (error) {
+        return (
+            <>
+                <p>{error}</p>
+                <button onClick={() => loadActivities(auth.token)}>
+                    Retry
+                </button>
+            </>
+        )
+    }
+
+    if (activities.length === 0) {
+        return <p>No activities yet.</p>
+    }
+    
     return (
-        <ActivityList activities={activities} />
+        <>
+            <button onClick={() => loadActivities(auth.token)}>
+                Refresh
+            </button>
+
+            <ActivityList activities={activities} />
+        </>
     )
 }
 
