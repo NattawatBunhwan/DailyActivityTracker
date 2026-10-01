@@ -19,8 +19,8 @@ export async function createActivity(request: CreateActivityRequest, token: stri
     return data
 }
 
-export async function getActivities(token: string): Promise<ActivitiesResponse> {
-    const response = await fetch('https://localhost:7127/api/Activities', {
+export async function getActivities(token: string, page: number): Promise<ActivitiesResponse> {
+    const response = await fetch(`https://localhost:7127/api/Activities?page=${page}`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,

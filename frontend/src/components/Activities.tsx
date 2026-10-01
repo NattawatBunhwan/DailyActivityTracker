@@ -9,15 +9,18 @@ function Activities() {
     const [activities, setActivities] = useState<Activity[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [page, setPage] = useState<number>(1)
+    const [totalPages, setTotalPages] = useState<number>(0)
 
-    async function loadActivities(token: string) {
+    async function loadActivities(token: string, page: number) {
         setError(null)
         setIsLoading(true)
 
         try {
             if (token) {
-                const data = await getActivities(token)
+                const data = await getActivities(token, page)
                 setActivities(data.items)
+                setTotalPages(data.totalPages)
             }
         } catch {
             setError("Failed to load activities.")
@@ -27,8 +30,8 @@ function Activities() {
     }
 
     useEffect(() => {
-        loadActivities(auth.token)
-    }, [auth.token])
+        loadActivities(auth.token, page)
+    }, [auth.token, page])
 
     if (isLoading) {
         return <p>Loading activities...</p>
@@ -38,7 +41,7 @@ function Activities() {
         return (
             <>
                 <p>{error}</p>
-                <button onClick={() => loadActivities(auth.token)}>
+                <button onClick={() => loadActivities(auth.token, page)}>
                     Retry
                 </button>
             </>
@@ -51,11 +54,19 @@ function Activities() {
     
     return (
         <>
-            <button onClick={() => loadActivities(auth.token)}>
+            <button onClick={() => loadActivities(auth.token, page)}>
                 Refresh
             </button>
 
             <ActivityList activities={activities} />
+
+            <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoading}>
+                Previous
+            </button>
+
+            <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoading}>
+                Next
+            </button>
         </>
     )
 }
