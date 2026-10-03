@@ -1,17 +1,14 @@
-import { useEffect, useState } from 'react'
 import Header from './components/Header'
 import './App.css'
 import LoginForm from './components/LoginForm'
 import useAuth from './hooks/useAuth'
 import Activities from './components/Activities'
+import CreateActivityForm from './components/CreateActivityForm'
+import { useState } from 'react'
 
 function App() {
-  const [count, setCount] = useState(0)
-  const [name, setName] = useState('')
-  useEffect(() => {
-    document.title = name || 'Daily Activity Tracker'
-  }, [name])
   const auth = useAuth()
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
   
   return (
     <main>
@@ -20,25 +17,20 @@ function App() {
         description="Track your activities and stay organized." 
       />
 
-      <p>Count: {count}</p>
-
-      <button onClick={() => setCount(count + 1 )}>
-        Add
-      </button>
-
-      <input 
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        placeholder='Enter your name' 
-      />
-
-      <p>Hello, {name}</p>
-
       <p>
         {auth.isAuthenticated ? "Logged in" : "Not logged in"}
       </p>
 
-      {auth.isAuthenticated ? <Activities/> : <LoginForm/>}
+      {auth.isAuthenticated && (
+        <>
+          <CreateActivityForm
+            onActivityCreated={() => setRefreshTrigger(prev => prev + 1)}
+          />
+          <Activities refreshTrigger={refreshTrigger}/>
+        </>
+      )}
+
+      {!auth.isAuthenticated && <LoginForm/>}
 
       {auth.isAuthenticated && (
         <button onClick={handleLogout}>

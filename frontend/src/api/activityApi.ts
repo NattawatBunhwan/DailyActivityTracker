@@ -1,5 +1,23 @@
 import type { Activity, ActivitiesResponse, CreateActivityRequest, UpdateActivityRequest } from "../types/activity"
 
+type ApiErrorResponse = {
+    title?: string
+    status?: number
+    errors?: Record<string, string[]>
+}
+
+// Shared Error Handler
+async function handleApiError(response: Response, fallbackMessage: string): Promise<void> {
+    if (!response.ok) {
+        const errorData: ApiErrorResponse = await response.json()
+
+        const errorMessages = Object.values(errorData.errors ?? {}).flat().join(" ")
+
+        throw new Error(errorMessages || errorData.title || fallbackMessage)
+    }
+}
+
+// Activity API Functions
 export async function createActivity(request: CreateActivityRequest, token: string): Promise<Activity> {
     const response = await fetch('https://localhost:7127/api/Activities', {
         method: 'POST',
@@ -10,9 +28,7 @@ export async function createActivity(request: CreateActivityRequest, token: stri
         body: JSON.stringify(request)
     })
 
-    if (!response.ok) {
-        throw new Error('Failed to create activity.')
-    }
+    await handleApiError(response, "Failed to create activity.")
 
     const data: Activity = await response.json()
     
@@ -27,9 +43,7 @@ export async function getActivities(token: string, page: number): Promise<Activi
         },
     })
 
-    if (!response.ok) {
-        throw new Error('Failed to load activities.')
-    }
+    await handleApiError(response, "Failed to load activities.")
 
     const data: ActivitiesResponse = await response.json()
 
@@ -43,10 +57,8 @@ export async function getActivityById(token: string, id: string): Promise<Activi
             Authorization: `Bearer ${token}`,
         }
     })
-    
-    if (!response.ok) {
-        throw new Error('Failed to load activity.')
-    }
+
+    await handleApiError(response, "Failed to load activity.")
 
     const data: Activity = await response.json()
 
@@ -63,9 +75,7 @@ export async function updateActivity(token: string, activityId: string, request:
         body: JSON.stringify(request)
     })
     
-    if (!response.ok) {
-        throw new Error('Failed to edit activity.')
-    }
+    await handleApiError(response, "Failed to edit activity.")
 
     const data: Activity = await response.json()
     
@@ -79,8 +89,6 @@ export async function deleteActivity(token: string, activityId: string): Promise
             Authorization: `Bearer ${token}`
         }
     })
-    
-    if (!response.ok) {
-        throw new Error("Failed to delete activity.")
-    }
+
+    await handleApiError(response, "Failed to delete activity.")
 }

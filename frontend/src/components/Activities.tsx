@@ -4,7 +4,11 @@ import ActivityList from "./ActivityList";
 import { getActivities } from "../api/activityApi";
 import useAuth from "../hooks/useAuth";
 
-function Activities() {
+type ActivitiesProps = {
+    refreshTrigger: number
+}
+
+function Activities({ refreshTrigger }: ActivitiesProps) {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
     const [isLoading, setIsLoading] = useState(false)
@@ -31,7 +35,7 @@ function Activities() {
 
     useEffect(() => {
         loadActivities(auth.token, page)
-    }, [auth.token, page])
+    }, [auth.token, page, refreshTrigger])
 
     if (isLoading) {
         return <p>Loading activities...</p>
@@ -58,7 +62,7 @@ function Activities() {
                 Refresh
             </button>
 
-            <ActivityList activities={activities} />
+            {activities.length === 0 ? (<p>No activities yet.</p>) : (<ActivityList activities={activities} />)}
 
             <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoading}>
                 Previous
