@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import type { Activity } from "../types/activity";
 import ActivityList from "./ActivityList";
-import { getActivities } from "../api/activityApi";
+import { getActivities, getActivityById } from "../api/activityApi";
 import useAuth from "../hooks/useAuth";
+import EditActivityForm from "./EditActivityForm";
 
 type ActivitiesProps = {
     refreshTrigger: number
@@ -15,6 +16,9 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
     const [error, setError] = useState<string | null>(null)
     const [page, setPage] = useState<number>(1)
     const [totalPages, setTotalPages] = useState<number>(0)
+    const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null)
+    const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
+    const [refreshUpdateTrigger, setRefreshUpdateTrigger] = useState(0)
 
     async function loadActivities(token: string, page: number) {
         setError(null)
@@ -33,9 +37,29 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
         }        
     }
 
+    async function loadSelectedActivity(token: string, activityId: string) {
+        setError(null)
+        setIsLoading(true)
+
+        try {
+            const data = await getActivityById(token, activityId)
+            setSelectedActivity(data)
+        } catch {
+            setError("Failed to load selected activity.")
+        } finally {
+            setIsLoading(false)
+        }
+    }
+
     useEffect(() => {
         loadActivities(auth.token, page)
-    }, [auth.token, page, refreshTrigger])
+    }, [auth.token, page, refreshTrigger, refreshUpdateTrigger])
+
+    useEffect(() => {
+        if (!selectedActivityId) return
+        
+        loadSelectedActivity(auth.token, selectedActivityId)
+    }, [auth.token, selectedActivityId])
 
     if (isLoading) {
         return <p>Loading activities...</p>
@@ -52,8 +76,14 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
         )
     }
 
-    if (activities.length === 0) {
-        return <p>No activities yet.</p>
+    function handleEditActivity(activityId: string) {
+        setSelectedActivityId(activityId)
+    }
+
+    function handleActivityUpdated() {
+        setRefreshUpdateTrigger(prev => prev + 1)
+        setSelectedActivityId(null)
+        setSelectedActivity(null)
     }
     
     return (
@@ -62,7 +92,22 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                 Refresh
             </button>
 
-            {activities.length === 0 ? (<p>No activities yet.</p>) : (<ActivityList activities={activities} />)}
+            {activities.length === 0 ? (
+                <p>No activities yet.</p>
+            ) : (
+                <ActivityList 
+                    activities={activities}
+                    onEdit={handleEditActivity}
+                />
+            )}
+
+            {selectedActivity !== null && (
+                <EditActivityForm
+                    key={selectedActivity.id}
+                    activity={selectedActivity}
+                    onActivityUpdated={handleActivityUpdated}
+                />
+            )}
 
             <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoading}>
                 Previous

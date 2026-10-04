@@ -3,15 +3,17 @@ import ActivityCard from "./ActivityCard"
 
 type ActivityListProps = {
     activities: Activity[]
+    onEdit: (activityId: string) => void
 }
 
-function ActivityList({ activities }:ActivityListProps) {
+function ActivityList({ activities, onEdit }:ActivityListProps) {
     return (
         <div>
             {activities.map((activity) => (
                 <ActivityCard
                     key={activity.id}
                     activity={activity}
+                    onEdit={onEdit}
                 />
             ))}
         </div>
