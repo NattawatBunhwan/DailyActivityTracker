@@ -68,7 +68,7 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
                 id="status"
                 >
                     <option value="1">Pending</option>
-                    <option value="2">InProgress</option>
+                    <option value="2">In Progress</option>
                     <option value="3">Completed</option>
                     <option value="4">Cancelled</option>
             </select>
