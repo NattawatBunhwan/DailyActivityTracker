@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import type { Activity } from "../types/activity";
 import ActivityList from "./ActivityList";
-import { getActivities, getActivityById } from "../api/activityApi";
+import { deleteActivity, getActivities, getActivityById } from "../api/activityApi";
 import useAuth from "../hooks/useAuth";
 import EditActivityForm from "./EditActivityForm";
 
@@ -19,6 +19,8 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
     const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
     const [refreshUpdateTrigger, setRefreshUpdateTrigger] = useState(0)
+    const [isDeleting, setIsDeleting] = useState(false)
+    const [refreshDeleteTrigger, setRefreshDeleteTrigger] = useState(0)
 
     async function loadActivities(token: string, page: number) {
         setError(null)
@@ -53,7 +55,7 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
 
     useEffect(() => {
         loadActivities(auth.token, page)
-    }, [auth.token, page, refreshTrigger, refreshUpdateTrigger])
+    }, [auth.token, page, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger])
 
     useEffect(() => {
         if (!selectedActivityId) return
@@ -85,6 +87,28 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
         setSelectedActivityId(null)
         setSelectedActivity(null)
     }
+
+    async function handleDeleteActivity(activityId: string) {
+        const confirmed = window.confirm("Are you sure you want to delete this activity?")
+
+        if (!confirmed) {
+            return
+        }
+
+        setIsDeleting(true)
+
+        try {
+            await deleteActivity(auth.token, activityId)
+
+            setRefreshDeleteTrigger(prev => prev + 1)
+
+            window.alert("Activity deleted successfully.")
+        } catch {
+            window.alert("Failed to delete activity.")
+        } finally {
+            setIsDeleting(false)
+        }
+    }
     
     return (
         <>
@@ -98,6 +122,8 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                 <ActivityList 
                     activities={activities}
                     onEdit={handleEditActivity}
+                    onDelete={handleDeleteActivity}
+                    isDeleting={isDeleting}
                 />
             )}
 
