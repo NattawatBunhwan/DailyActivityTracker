@@ -6,9 +6,11 @@ type DeleteModalProps = {
     onClose: () => void
     onConfirm: () => void
     children: ReactNode
+    isDeleting: boolean
+    deleteError: string | null
 }
 
-function DeleteModal({ isOpen, onClose, onConfirm, children }: DeleteModalProps) {
+function DeleteModal({ isOpen, onClose, onConfirm, children, isDeleting, deleteError }: DeleteModalProps) {
     if (!isOpen) {
         return null
     }
@@ -20,6 +22,7 @@ function DeleteModal({ isOpen, onClose, onConfirm, children }: DeleteModalProps)
                     type="button"
                     className="modal-close"
                     onClick={onClose}
+                    disabled={isDeleting}
                     aria-label="Close delete activity modal"
                 >
                     ×
@@ -27,10 +30,17 @@ function DeleteModal({ isOpen, onClose, onConfirm, children }: DeleteModalProps)
 
                 {children}
 
+                {deleteError && (
+                    <p className="delete-error">
+                        {deleteError}
+                    </p>
+                )}
+
                 <div className="modal-actions">
                     <button
                         type="button"
                         onClick={onClose}
+                        disabled={isDeleting}
                     >
                         Cancel
                     </button>
@@ -39,8 +49,9 @@ function DeleteModal({ isOpen, onClose, onConfirm, children }: DeleteModalProps)
                         type="button"
                         className="delete-button"
                         onClick={onConfirm}
+                        disabled={isDeleting}
                     >
-                        Delete
+                        {isDeleting ? "Deleting..." : "Delete"}
                     </button>
                 </div>
             </div>
