@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent, type SubmitEvent } from "react"
+import { useRef, useState, type ChangeEvent, type SubmitEvent } from "react"
 import type { Activity, ActivityPriority, ActivityStatus, UpdateActivityRequest } from "../types/activity"
 import useAuth from "../hooks/useAuth"
 import { updateActivity } from "../api/activityApi"
@@ -6,6 +6,7 @@ import { updateActivity } from "../api/activityApi"
 type EditActivityFormProps = {
     activity: Activity
     onActivityUpdated: () => void
+    onUnsavedChangesChange: (hasChanges: boolean) => void
 }
 
 function toLocalDateTimeString(dateString: string): string {
@@ -20,15 +21,36 @@ function toLocalDateTimeString(dateString: string): string {
     return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
-function EditActivityForm({ activity, onActivityUpdated }: EditActivityFormProps) {
+function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange }: EditActivityFormProps) {
     const [title, setTitle] = useState(activity.title)
+    const initialTitle = useRef(activity.title)
     const [description, setDescription] = useState(activity.description ?? "")
+    const initialDescription = useRef(activity.description ?? "")
     const [activityDate, setActivityDate] = useState(toLocalDateTimeString(activity.activityDate))
+    const initialActivityDate = useRef(toLocalDateTimeString(activity.activityDate))
     const [status, setStatus] = useState(activity.status)
+    const initialStatus = useRef(activity.status)
     const [priority, setPriority] = useState(activity.priority)
+    const initialPriority = useRef(activity.priority)
     const auth = useAuth()
     const [isLoading, setIsLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState("")
+
+    function checkHasUnsavedChanges(
+        newTitle: string = title,
+        newDescription: string = description,
+        newActivityDate: string = activityDate,
+        newStatus: ActivityStatus = status,
+        newPriority: ActivityPriority = priority
+    ) {
+        return (
+            newTitle !== initialTitle.current ||
+            newDescription !== initialDescription.current ||
+            newActivityDate !== initialActivityDate.current ||
+            newStatus !== initialStatus.current ||
+            newPriority !== initialPriority.current
+        )
+    }
 
     return (
         <form onSubmit={handleSubmit}>
@@ -39,7 +61,14 @@ function EditActivityForm({ activity, onActivityUpdated }: EditActivityFormProps
             <input 
                 type="text"
                 value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                onChange={(e) => {
+                    const newTitle = e.target.value
+
+                    setTitle(newTitle)
+                    onUnsavedChangesChange(
+                        checkHasUnsavedChanges(newTitle)
+                    )
+                }}
                 required
             />
 
@@ -47,14 +76,35 @@ function EditActivityForm({ activity, onActivityUpdated }: EditActivityFormProps
             <textarea
                 name="description"
                 value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                onChange={(e) => {
+                    const newDescription = e.target.value
+
+                    setDescription(newDescription)
+                    onUnsavedChangesChange(
+                        checkHasUnsavedChanges(
+                            title,
+                            newDescription
+                        )
+                    )
+                }}
             ></textarea>
 
             <label>Activity Date</label>
             <input 
                 type="datetime-local"
                 value={activityDate}
-                onChange={(e) => setActivityDate(e.target.value)}
+                onChange={(e) => {
+                    const newActivityDate = e.target.value
+
+                    setActivityDate(newActivityDate)
+                    onUnsavedChangesChange(
+                        checkHasUnsavedChanges(
+                            title,
+                            description,
+                            newActivityDate
+                        )
+                    )
+                }}
                 required
             />
 
@@ -110,6 +160,7 @@ function EditActivityForm({ activity, onActivityUpdated }: EditActivityFormProps
             const updateData = await updateActivity(auth.token, activity.id, updateRequest)
 
             onActivityUpdated()
+            onUnsavedChangesChange(false)
 
             console.log("Update activity success:",updateData)
 
@@ -135,10 +186,19 @@ function EditActivityForm({ activity, onActivityUpdated }: EditActivityFormProps
         }
     
     function handleStatusChange(event: ChangeEvent<HTMLSelectElement>) {
-        const value = Number(event.target.value)
+        const newStatus = Number(event.target.value)
     
-        if (isValidStatus(value)) {
-            setStatus(value)
+        if (isValidStatus(newStatus)) {
+            setStatus(newStatus)
+
+            onUnsavedChangesChange(
+                checkHasUnsavedChanges(
+                    title,
+                    description,
+                    activityDate,
+                    newStatus
+                )
+            )
         }
     }
 
@@ -154,10 +214,20 @@ function EditActivityForm({ activity, onActivityUpdated }: EditActivityFormProps
     }
     
     function handlePriorityChange(event: ChangeEvent<HTMLSelectElement>) {
-        const value = Number(event.target.value)
+        const newPriority = Number(event.target.value)
     
-        if (isValidPriority(value)) {
-            setPriority(value)
+        if (isValidPriority(newPriority)) {
+            setPriority(newPriority)
+
+            onUnsavedChangesChange(
+                checkHasUnsavedChanges(
+                    title,
+                    description,
+                    activityDate,
+                    status,
+                    newPriority
+                )
+            )
         }
     }
 }

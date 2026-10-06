@@ -4,6 +4,8 @@ import ActivityList from "./ActivityList";
 import { deleteActivity, getActivities, getActivityById } from "../api/activityApi";
 import useAuth from "../hooks/useAuth";
 import EditActivityForm from "./EditActivityForm";
+import EditModal from "./EditModal";
+import DeleteModal from "./DeleteModal";
 
 type ActivitiesProps = {
     refreshTrigger: number
@@ -21,6 +23,9 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
     const [refreshUpdateTrigger, setRefreshUpdateTrigger] = useState(0)
     const [isDeleting, setIsDeleting] = useState(false)
     const [refreshDeleteTrigger, setRefreshDeleteTrigger] = useState(0)
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+    const [deleteActivityId, setDeleteActivityId] = useState<string | null>(null)
+    const activityToDelete = activities.find(activity => activity.id === deleteActivityId)
 
     async function loadActivities(token: string, page: number) {
         setError(null)
@@ -88,26 +93,8 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
         setSelectedActivity(null)
     }
 
-    async function handleDeleteActivity(activityId: string) {
-        const confirmed = window.confirm("Are you sure you want to delete this activity?")
-
-        if (!confirmed) {
-            return
-        }
-
-        setIsDeleting(true)
-
-        try {
-            await deleteActivity(auth.token, activityId)
-
-            setRefreshDeleteTrigger(prev => prev + 1)
-
-            window.alert("Activity deleted successfully.")
-        } catch {
-            window.alert("Failed to delete activity.")
-        } finally {
-            setIsDeleting(false)
-        }
+    function handleDeleteActivity(activityId: string) {
+        setDeleteActivityId(activityId)
     }
     
     return (
@@ -127,14 +114,31 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                 />
             )}
 
-            {selectedActivity !== null && (
-                <EditActivityForm
-                    key={selectedActivity.id}
-                    activity={selectedActivity}
-                    onActivityUpdated={handleActivityUpdated}
-                />
-            )}
+            <EditModal
+                isOpen={selectedActivity !== null}
+                onClose={handleCloseEditModal}
+            >
+                {selectedActivity && (
+                    <EditActivityForm
+                        key={selectedActivity.id}
+                        activity={selectedActivity}
+                        onActivityUpdated={handleActivityUpdated}
+                        onUnsavedChangesChange={handleUnsavedChangesChange}
+                    />
+                )}
+            </EditModal>
 
+            <DeleteModal
+                isOpen={deleteActivityId !== null}
+                onClose={handleCloseDeleteModal}
+                onConfirm={handleConfirmDelete}
+            >
+                <h2>Delete Activity</h2>
+                <p className="delete-warning">
+                    Are you sure you want to delete <strong>"{activityToDelete?.title}"</strong>?
+                </p>
+            </DeleteModal>
+            
             <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoading}>
                 Previous
             </button>
@@ -144,6 +148,54 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
             </button>
         </>
     )
+
+    function handleCloseEditModal() {
+        if (hasUnsavedChanges) {
+            const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?")
+            
+            if (!confirmed) {
+                return
+            }
+        }
+
+        setHasUnsavedChanges(false)
+        setSelectedActivity(null)
+        setSelectedActivityId(null)
+    }
+
+    async function handleConfirmDelete() {
+        if (!deleteActivityId) {
+            return
+        }
+
+        setIsDeleting(true)
+
+        try {
+            await deleteActivity(auth.token, deleteActivityId)
+
+            setRefreshDeleteTrigger(prev => prev + 1)
+
+            setDeleteActivityId(null)
+
+            window.alert("Activity deleted successfully.")
+        } catch {
+            window.alert("Failed to delete activity.")
+        } finally {
+            setIsDeleting(false)
+        }
+    }
+
+    function handleCloseDeleteModal() {
+        if (isDeleting) {
+            return
+        }
+
+        setDeleteActivityId(null)
+    }
+
+    function handleUnsavedChangesChange(hasChanges: boolean) {
+        setHasUnsavedChanges(hasChanges)
+    }
 }
 
 export default Activities
