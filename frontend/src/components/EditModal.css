@@ -45,3 +45,8 @@
     gap: 8px;
     margin-top: 16px;
 }
+
+.delete-error {
+    color: #dc2626;
+    margin-top: 12px;
+}

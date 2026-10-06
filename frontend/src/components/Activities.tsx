@@ -14,22 +14,25 @@ type ActivitiesProps = {
 function Activities({ refreshTrigger }: ActivitiesProps) {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
-    const [isLoading, setIsLoading] = useState(false)
-    const [error, setError] = useState<string | null>(null)
+    const [activitiesError, setActivitiesError] = useState<string | null>(null)
+    const [selectedActivityError, setSelectedActivityError] = useState<string | null>(null)
     const [page, setPage] = useState<number>(1)
     const [totalPages, setTotalPages] = useState<number>(0)
     const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
     const [refreshUpdateTrigger, setRefreshUpdateTrigger] = useState(0)
+    const [isLoadingActivities, setIsLoadingActivities] = useState(false)
+    const [isLoadingSelectedActivity, setIsLoadingSelectedActivity] = useState(false)
     const [isDeleting, setIsDeleting] = useState(false)
+    const [deleteError, setDeleteError] = useState<string | null>(null)
     const [refreshDeleteTrigger, setRefreshDeleteTrigger] = useState(0)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [deleteActivityId, setDeleteActivityId] = useState<string | null>(null)
     const activityToDelete = activities.find(activity => activity.id === deleteActivityId)
 
     async function loadActivities(token: string, page: number) {
-        setError(null)
-        setIsLoading(true)
+        setActivitiesError(null)
+        setIsLoadingActivities(true)
 
         try {
             if (token) {
@@ -38,23 +41,23 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                 setTotalPages(data.totalPages)
             }
         } catch {
-            setError("Failed to load activities.")
+            setActivitiesError("Failed to load activities.")
         } finally {
-            setIsLoading(false)
+            setIsLoadingActivities(false)
         }        
     }
 
     async function loadSelectedActivity(token: string, activityId: string) {
-        setError(null)
-        setIsLoading(true)
+        setSelectedActivityError(null)
+        setIsLoadingSelectedActivity(true)
 
         try {
             const data = await getActivityById(token, activityId)
             setSelectedActivity(data)
         } catch {
-            setError("Failed to load selected activity.")
+            setSelectedActivityError("Failed to load selected activity.")
         } finally {
-            setIsLoading(false)
+            setIsLoadingSelectedActivity(false)
         }
     }
 
@@ -68,14 +71,14 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
         loadSelectedActivity(auth.token, selectedActivityId)
     }, [auth.token, selectedActivityId])
 
-    if (isLoading) {
+    if (isLoadingActivities) {
         return <p>Loading activities...</p>
     }
 
-    if (error) {
+    if (activitiesError) {
         return (
             <>
-                <p>{error}</p>
+                <p>{activitiesError}</p>
                 <button onClick={() => loadActivities(auth.token, page)}>
                     Retry
                 </button>
@@ -94,7 +97,16 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
     }
 
     function handleDeleteActivity(activityId: string) {
+        setDeleteError(null)
         setDeleteActivityId(activityId)
+    }
+
+    function handleRetrySelectedActivity() {
+        if (!selectedActivityId) {
+            return
+        }
+
+        loadSelectedActivity(auth.token, selectedActivityId)
     }
     
     return (
@@ -115,16 +127,32 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
             )}
 
             <EditModal
-                isOpen={selectedActivity !== null}
+                isOpen={
+                    selectedActivityId !== null ||
+                    selectedActivity !== null
+                }
                 onClose={handleCloseEditModal}
             >
-                {selectedActivity && (
-                    <EditActivityForm
-                        key={selectedActivity.id}
-                        activity={selectedActivity}
-                        onActivityUpdated={handleActivityUpdated}
-                        onUnsavedChangesChange={handleUnsavedChangesChange}
-                    />
+                {isLoadingSelectedActivity ? (
+                    <p>Loading activity...</p>
+                ) : selectedActivityError ? (
+                    <>
+                        <p>{selectedActivityError}</p>
+                        <div className="modal-actions">
+                            <button onClick={handleRetrySelectedActivity}>
+                                Retry
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    selectedActivity && (
+                        <EditActivityForm
+                            key={selectedActivity.id}
+                            activity={selectedActivity}
+                            onActivityUpdated={handleActivityUpdated}
+                            onUnsavedChangesChange={handleUnsavedChangesChange}
+                        />
+                    )
                 )}
             </EditModal>
 
@@ -132,6 +160,8 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                 isOpen={deleteActivityId !== null}
                 onClose={handleCloseDeleteModal}
                 onConfirm={handleConfirmDelete}
+                isDeleting={isDeleting}
+                deleteError={deleteError}
             >
                 <h2>Delete Activity</h2>
                 <p className="delete-warning">
@@ -139,11 +169,11 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                 </p>
             </DeleteModal>
             
-            <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoading}>
+            <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoadingActivities}>
                 Previous
             </button>
 
-            <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoading}>
+            <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoadingActivities}>
                 Next
             </button>
         </>
@@ -168,6 +198,7 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
             return
         }
 
+        setDeleteError(null)
         setIsDeleting(true)
 
         try {
@@ -179,7 +210,7 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
 
             window.alert("Activity deleted successfully.")
         } catch {
-            window.alert("Failed to delete activity.")
+            setDeleteError("Failed to delete activity.")
         } finally {
             setIsDeleting(false)
         }
@@ -190,6 +221,7 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
             return
         }
 
+        setDeleteError(null)
         setDeleteActivityId(null)
     }
 
