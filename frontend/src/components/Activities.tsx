@@ -6,12 +6,12 @@ import useAuth from "../hooks/useAuth";
 import EditActivityForm from "./EditActivityForm";
 import EditModal from "./EditModal";
 import DeleteModal from "./DeleteModal";
+import CreateModal from "./CreateModal";
+import CreateActivityForm from "./CreateActivityForm";
+import "./Activities.css"
+import CreatedActivityForm from "./CreatedActivityForm";
 
-type ActivitiesProps = {
-    refreshTrigger: number
-}
-
-function Activities({ refreshTrigger }: ActivitiesProps) {
+function Activities() {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
     const [activitiesError, setActivitiesError] = useState<string | null>(null)
@@ -29,6 +29,9 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [deleteActivityId, setDeleteActivityId] = useState<string | null>(null)
     const activityToDelete = activities.find(activity => activity.id === deleteActivityId)
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+    const [refreshTrigger, setRefreshTrigger] = useState(0)
+    const [createdActivity, setCreatedActivity] = useState<Activity | null>(null)
 
     async function loadActivities(token: string, page: number) {
         setActivitiesError(null)
@@ -110,7 +113,18 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
     }
     
     return (
-        <>
+        <section className="activities">
+            <header className="activities-header">
+                <h2>Activities</h2>
+                <button className="create-activity-button" onClick={() => {
+                    setCreatedActivity(null)
+                    setIsCreateModalOpen(true)
+                }}
+                >
+                    CreateActivity
+                </button>
+            </header>
+            
             <button onClick={() => loadActivities(auth.token, page)}>
                 Refresh
             </button>
@@ -125,6 +139,24 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                     isDeleting={isDeleting}
                 />
             )}
+
+            <CreateModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+            > 
+                {createdActivity === null ? (
+                    <CreateActivityForm
+                        onActivityCreated={(createData) => {
+                            setRefreshTrigger(prev => prev + 1)
+                            setCreatedActivity(createData)
+                        }   }
+                    />
+                ) : (
+                    <CreatedActivityForm
+                        activityCreated={createdActivity}
+                    />
+                )}
+            </CreateModal> 
 
             <EditModal
                 isOpen={
@@ -169,14 +201,16 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
                 </p>
             </DeleteModal>
             
-            <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoadingActivities}>
-                Previous
-            </button>
+            <div className="pagination">
+                <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoadingActivities}>
+                    Previous
+                </button>
 
-            <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoadingActivities}>
-                Next
-            </button>
-        </>
+                <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoadingActivities}>
+                    Next
+                </button>
+            </div>   
+        </section>
     )
 
     function handleCloseEditModal() {
