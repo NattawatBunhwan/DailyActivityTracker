@@ -6,6 +6,7 @@ import useAuth from "../hooks/useAuth";
 import EditActivityForm from "./EditActivityForm";
 import EditModal from "./EditModal";
 import DeleteModal from "./DeleteModal";
+import EmptyState from "./EmptyState";
 import CreateModal from "./CreateModal";
 import CreateActivityForm from "./CreateActivityForm";
 import "./Activities.css"
@@ -130,7 +131,7 @@ function Activities() {
             </button>
 
             {activities.length === 0 ? (
-                <p>No activities yet.</p>
+                <EmptyState/>
             ) : (
                 <ActivityList 
                     activities={activities}
