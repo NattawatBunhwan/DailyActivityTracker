@@ -6,6 +6,7 @@ import useAuth from "../hooks/useAuth";
 import EditActivityForm from "./EditActivityForm";
 import EditModal from "./EditModal";
 import DeleteModal from "./DeleteModal";
+import EmptyState from "./EmptyState";
 
 type ActivitiesProps = {
     refreshTrigger: number
@@ -116,7 +117,7 @@ function Activities({ refreshTrigger }: ActivitiesProps) {
             </button>
 
             {activities.length === 0 ? (
-                <p>No activities yet.</p>
+                <EmptyState/>
             ) : (
                 <ActivityList 
                     activities={activities}
