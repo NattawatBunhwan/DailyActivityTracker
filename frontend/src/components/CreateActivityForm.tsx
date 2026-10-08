@@ -1,10 +1,10 @@
 import { useState, type ChangeEvent, type SubmitEvent } from "react"
-import type { ActivityPriority, ActivityStatus, CreateActivityRequest } from "../types/activity"
+import type { Activity, ActivityPriority, ActivityStatus, CreateActivityRequest } from "../types/activity"
 import { createActivity } from "../api/activityApi"
 import useAuth from "../hooks/useAuth"
 
 type CreateActivityFormProps = {
-    onActivityCreated: () => void
+    onActivityCreated: (createData: Activity) => void
 }
 
 type CreateActivityFormData = {
@@ -30,9 +30,11 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
 
     return (
         <form onSubmit={handleSubmit}>
-            <h2>Create Activity</h2>
-            {successMessage && (<p>{successMessage}</p>)}
-            {errorMessage && (<p>{errorMessage}</p>)}
+            <header>
+                <h2>Create Activity</h2>
+                {successMessage && (<p>{successMessage}</p>)}
+                {errorMessage && (<p>{errorMessage}</p>)}
+            </header>
 
             <label htmlFor="title">Title</label>
             <input 
@@ -115,19 +117,12 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
         try {
             const createData = await createActivity(request, auth.token)
 
-            onActivityCreated()
+            onActivityCreated(createData)
 
             console.log("Create activity success:",createData)
 
             setSuccessMessage("Activity created successfully!")
             setErrorMessage("")
-            setFormData({
-                title: "",
-                description: "",
-                activityDate: "",
-                status: 1,
-                priority: 1,
-            })
         } catch (error) {
             console.error("Fail create activity:",error)
             setErrorMessage("Failed to create activity.")

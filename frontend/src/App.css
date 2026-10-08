@@ -14,3 +14,9 @@ p {
   color: #666;
   line-height: 1.6;
 }
+
+.auth-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
