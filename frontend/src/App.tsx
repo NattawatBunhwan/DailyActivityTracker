@@ -3,12 +3,9 @@ import './App.css'
 import LoginForm from './components/LoginForm'
 import useAuth from './hooks/useAuth'
 import Activities from './components/Activities'
-import CreateActivityForm from './components/CreateActivityForm'
-import { useState } from 'react'
 
 function App() {
   const auth = useAuth()
-  const [refreshTrigger, setRefreshTrigger] = useState(0)
   
   return (
     <main>
@@ -17,25 +14,27 @@ function App() {
         description="Track your activities and stay organized." 
       />
 
-      <p>
-        {auth.isAuthenticated ? "Logged in" : "Not logged in"}
-      </p>
-
-      {auth.isAuthenticated && (
+      {auth.isAuthenticated ? (
         <>
-          <CreateActivityForm
-            onActivityCreated={() => setRefreshTrigger(prev => prev + 1)}
-          />
-          <Activities refreshTrigger={refreshTrigger}/>
+          <div className='auth-section'>
+            <p>Logged in</p>
+
+            <button onClick={handleLogout}>
+              Logout
+            </button> 
+          </div>
+          
+          <div>
+            <Activities/>
+          </div>   
         </>
-      )}
-
-      {!auth.isAuthenticated && <LoginForm/>}
-
-      {auth.isAuthenticated && (
-        <button onClick={handleLogout}>
-          Logout
-        </button>
+        
+      ) : (
+        <>
+          <p>Not logged in</p>
+        
+          <LoginForm/>
+        </>
       )}
     </main>
   )
