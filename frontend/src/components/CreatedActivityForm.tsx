@@ -1,4 +1,5 @@
 import type { Activity } from "../types/activity"
+import { getPriorityLabel, getStatusLabel } from "../utils/activity"
 
 type CreatedActivityFormProps = {
     activityCreated: Activity
@@ -18,60 +19,60 @@ function toLocalDateTimeString(dateString: string): string {
 
 function CreatedActivityForm({ activityCreated }: CreatedActivityFormProps) {
     return (
-        <form>
+        <section>
             <header>
                 <h2>Activity Create Success</h2>
             </header>
 
-            <label htmlFor="title">Title</label>
-            <input 
-                type="text" 
-                value={activityCreated.title}
-                id="title"
-                readOnly
-            />
+            <div>
+                <label htmlFor="created-activity-title">Title</label>
+                <input 
+                    type="text" 
+                    value={activityCreated.title}
+                    id="created-activity-title"
+                    readOnly
+                />
+            </div>
 
-            <label htmlFor="description">Description</label>
-            <textarea 
-                name="description"
-                value={activityCreated.description ?? ""}
-                id="description"
-                readOnly
-            ></textarea>
+            <div>
+                <label htmlFor="created-activity-description">Description</label>
+                <textarea 
+                    value={activityCreated.description ?? ""}
+                    id="created-activity-description"
+                    readOnly
+                ></textarea>
+            </div>
 
-            <label htmlFor="activityDate">Activity Date</label>
-            <input 
-                type="datetime-local"
-                value={toLocalDateTimeString(activityCreated.activityDate)}
-                id="activityDate"
-                readOnly
-            />
+            <div>
+                <label htmlFor="created-activity-date">Activity Date</label>
+                <input 
+                    type="datetime-local"
+                    value={toLocalDateTimeString(activityCreated.activityDate)}
+                    id="created-activity-date"
+                    readOnly
+                />
+            </div>
 
-            <label htmlFor="status">Status</label>
-            <select 
-                name="status" 
-                value={activityCreated.status}
-                id="status"
-                disabled
-                >
-                    <option value="1">Pending</option>
-                    <option value="2">In Progress</option>
-                    <option value="3">Completed</option>
-                    <option value="4">Cancelled</option>
-            </select>
+            <div>
+                <label htmlFor="created-activity-status">Status</label>
+                <input 
+                    type="text"
+                    value={getStatusLabel(activityCreated.status)}
+                    id="created-activity-status"
+                    readOnly
+                />
+            </div>
 
-            <label htmlFor="priority">Priority</label>
-            <select 
-                name="priority"
-                value={activityCreated.priority}
-                id="priority"
-                disabled 
-                >
-                    <option value="1">Low</option>
-                    <option value="2">Medium</option>
-                    <option value="3">High</option>
-            </select>
-        </form>
+            <div>
+                <label htmlFor="created-activity-priority">Priority</label>
+                <input 
+                    type="text"
+                    value={getPriorityLabel(activityCreated.priority)}
+                    id="created-activity-priority"
+                    readOnly
+                />
+            </div>
+        </section>
     )
 }
 

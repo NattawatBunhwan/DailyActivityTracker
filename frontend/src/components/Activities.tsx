@@ -117,13 +117,12 @@ function Activities() {
         <section className="activities">
             <header className="activities-header">
                 <h2>Activities</h2>
-                <button className="create-activity-button" onClick={() => {
-                    setCreatedActivity(null)
-                    setIsCreateModalOpen(true)
-                }}
-                >
-                    CreateActivity
-                </button>
+                {activities.length > 0 && (
+                    <button className="create-activity-button" onClick={handleOpenCreateModal}
+                    >
+                        CreateActivity
+                    </button>
+                )}
             </header>
             
             <button onClick={() => loadActivities(auth.token, page)}>
@@ -131,7 +130,9 @@ function Activities() {
             </button>
 
             {activities.length === 0 ? (
-                <EmptyState/>
+                <EmptyState
+                    onOpenCreateModal={handleOpenCreateModal}
+                />
             ) : (
                 <ActivityList 
                     activities={activities}
@@ -262,6 +263,11 @@ function Activities() {
 
     function handleUnsavedChangesChange(hasChanges: boolean) {
         setHasUnsavedChanges(hasChanges)
+    }
+
+    function handleOpenCreateModal() {
+        setCreatedActivity(null)
+        setIsCreateModalOpen(true)
     }
 }
 
