@@ -1,6 +1,10 @@
 import "./EmptyState.css"
 
-function EmptyState() {
+type EmptyStateProps = {
+    onOpenCreateModal: () => void
+}
+
+function EmptyState({ onOpenCreateModal }: EmptyStateProps) {
     return (
         <section className="empty-state">
             <header>
@@ -8,7 +12,10 @@ function EmptyState() {
             </header>
 
             <p>You haven't created any activities yet.</p>
-            <p>Click "CreateActivity" above to create your first activity.</p>
+
+            <button onClick={onOpenCreateModal}>
+                Create your first activity
+            </button>
         </section>
     )
 }
