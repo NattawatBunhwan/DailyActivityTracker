@@ -1,4 +1,5 @@
-import { useEffect, type ReactNode } from "react"
+import { type ReactNode } from "react"
+import { useLockBodyScroll } from "../hooks/useLockBodyScroll"
 import "./Modal.css"
 
 type EditModalProps = {
@@ -8,18 +9,7 @@ type EditModalProps = {
 }
 
 function EditModal({ isOpen, onClose, children }: EditModalProps) {
-    useEffect(() => {
-        if (!isOpen) {
-            return 
-        }
-
-        const previousOverflow = document.body.style.overflow
-        document.body.style.overflow = "hidden"
-
-        return () => {
-            document.body.style.overflow = previousOverflow
-        }
-    }, [isOpen])
+    useLockBodyScroll(isOpen)
 
     if (!isOpen) {
         return null
