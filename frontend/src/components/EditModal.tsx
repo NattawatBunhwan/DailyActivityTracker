@@ -1,5 +1,6 @@
-import type { ReactNode } from "react"
-import "./EditModal.css"
+import { type ReactNode } from "react"
+import { useLockBodyScroll } from "../hooks/useLockBodyScroll"
+import "./Modal.css"
 
 type EditModalProps = {
     isOpen: boolean
@@ -8,13 +9,15 @@ type EditModalProps = {
 }
 
 function EditModal({ isOpen, onClose, children }: EditModalProps) {
+    useLockBodyScroll(isOpen)
+
     if (!isOpen) {
         return null
     }
 
     return (
         <div className="modal-overlay">
-            <div className="modal">
+            <div className="modal modal--form">
                 <button
                     type="button"
                     className="modal-close"

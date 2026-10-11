@@ -1,0 +1,37 @@
+.activity-form {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.activity-form__field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.activity-form__field input,
+.activity-form__field textarea,
+.activity-form__field select {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+.activity-form__field textarea { 
+    min-height: 80px;
+    resize: vertical; 
+}
+
+.activity-form__row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 16px;
+}
+
+@media (max-width: 600px) {
+    .activity-form__row {
+        grid-template-columns: 1fr;
+    }
+}

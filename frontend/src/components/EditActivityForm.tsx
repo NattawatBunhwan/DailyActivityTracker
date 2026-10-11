@@ -2,6 +2,7 @@ import { useRef, useState, type ChangeEvent, type SubmitEvent } from "react"
 import type { Activity, ActivityPriority, ActivityStatus, UpdateActivityRequest } from "../types/activity"
 import useAuth from "../hooks/useAuth"
 import { updateActivity } from "../api/activityApi"
+import "./ActivityForm.css"
 
 type EditActivityFormProps = {
     activity: Activity
@@ -52,88 +53,110 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange 
         )
     }
 
+    const hasUnsavedChanges = checkHasUnsavedChanges()
+
     return (
-        <form onSubmit={handleSubmit}>
+        <form className="activity-form" onSubmit={handleSubmit}>
             <h2>Edit Activity</h2>
             {errorMessage && (<p>{errorMessage}</p>)}
 
-            <label>Title</label>
-            <input 
-                type="text"
-                value={title}
-                onChange={(e) => {
-                    const newTitle = e.target.value
+            <div className="activity-form__field">
+                <label htmlFor="edit-title">Title</label>
+                <input 
+                    type="text"
+                    value={title}
+                    id="edit-title"
+                    onChange={(e) => {
+                        const newTitle = e.target.value
 
-                    setTitle(newTitle)
-                    onUnsavedChangesChange(
-                        checkHasUnsavedChanges(newTitle)
-                    )
-                }}
-                required
-            />
-
-            <label>Description</label>
-            <textarea
-                name="description"
-                value={description}
-                onChange={(e) => {
-                    const newDescription = e.target.value
-
-                    setDescription(newDescription)
-                    onUnsavedChangesChange(
-                        checkHasUnsavedChanges(
-                            title,
-                            newDescription
+                        setTitle(newTitle)
+                        onUnsavedChangesChange(
+                            checkHasUnsavedChanges(newTitle)
                         )
-                    )
-                }}
-            ></textarea>
+                    }}
+                    required
+                />
+            </div>
 
-            <label>Activity Date</label>
-            <input 
-                type="datetime-local"
-                value={activityDate}
-                onChange={(e) => {
-                    const newActivityDate = e.target.value
+            <div className="activity-form__field">
+                <label htmlFor="edit-description">Description</label>
+                <textarea
+                    name="description"
+                    value={description}
+                    id="edit-description"
+                    onChange={(e) => {
+                        const newDescription = e.target.value
 
-                    setActivityDate(newActivityDate)
-                    onUnsavedChangesChange(
-                        checkHasUnsavedChanges(
-                            title,
-                            description,
-                            newActivityDate
+                        setDescription(newDescription)
+                        onUnsavedChangesChange(
+                            checkHasUnsavedChanges(
+                                title,
+                                newDescription
+                            )
                         )
-                    )
-                }}
-                required
-            />
+                    }}
+                ></textarea>
+            </div>
 
-            <label>Status</label>
-            <select 
-                name="status"
-                value={status}
-                onChange={handleStatusChange} 
-                id="status"
-                >
-                    <option value="1">Pending</option>
-                    <option value="2">In Progress</option>
-                    <option value="3">Completed</option>
-                    <option value="4">Cancelled</option>
-            </select>
+            <div className="activity-form__row">
+                <div className="activity-form__field">
+                    <label htmlFor="edit-activityDate">Activity Date</label>
+                    <input 
+                        type="datetime-local"
+                        value={activityDate}
+                        id="edit-activityDate"
+                        onChange={(e) => {
+                            const newActivityDate = e.target.value
 
-            <label>Priority</label>
-            <select 
-                name="priority" 
-                value={priority}
-                onChange={handlePriorityChange}
-                id="priority"
-                >
-                    <option value="1">Low</option>
-                    <option value="2">Medium</option>
-                    <option value="3">High</option>
-            </select>
+                            setActivityDate(newActivityDate)
+                            onUnsavedChangesChange(
+                                checkHasUnsavedChanges(
+                                    title,
+                                    description,
+                                    newActivityDate
+                                )
+                            )
+                        }}
+                        required
+                    />
+                </div>
 
-            <button type="submit" disabled={isLoading}>{isLoading ? "Updating..." : "Update"}</button>
+                <div className="activity-form__field">
+                    <label htmlFor="edit-status">Status</label>
+                    <select 
+                        name="status"
+                        value={status}
+                        onChange={handleStatusChange} 
+                        id="edit-status"
+                        >
+                            <option value="1">Pending</option>
+                            <option value="2">In Progress</option>
+                            <option value="3">Completed</option>
+                            <option value="4">Cancelled</option>
+                    </select>
+                </div>
+
+                <div className="activity-form__field">
+                    <label htmlFor="edit-priority">Priority</label>
+                    <select 
+                        name="priority" 
+                        value={priority}
+                        onChange={handlePriorityChange}
+                        id="edit-priority"
+                        >
+                            <option value="1">Low</option>
+                            <option value="2">Medium</option>
+                            <option value="3">High</option>
+                    </select>
+                </div>
+            </div>
+
+            <button 
+                type="submit" 
+                disabled={!hasUnsavedChanges || isLoading}
+            >
+                {isLoading ? "Updating..." : "Update"}
+            </button>
         </form>
     )
 

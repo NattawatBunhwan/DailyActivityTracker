@@ -1,5 +1,6 @@
-import type { ReactNode } from "react"
-import "./EditModal.css"
+import { type ReactNode } from "react"
+import { useLockBodyScroll } from "../hooks/useLockBodyScroll"
+import "./Modal.css"
 
 type DeleteModalProps = {
     isOpen: boolean
@@ -11,6 +12,8 @@ type DeleteModalProps = {
 }
 
 function DeleteModal({ isOpen, onClose, onConfirm, children, isDeleting, deleteError }: DeleteModalProps) {
+    useLockBodyScroll(isOpen)
+
     if (!isOpen) {
         return null
     }

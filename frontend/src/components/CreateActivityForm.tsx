@@ -2,6 +2,7 @@ import { useState, type ChangeEvent, type SubmitEvent } from "react"
 import type { Activity, ActivityPriority, ActivityStatus, CreateActivityRequest } from "../types/activity"
 import { createActivity } from "../api/activityApi"
 import useAuth from "../hooks/useAuth"
+import "./ActivityForm.css"
 
 type CreateActivityFormProps = {
     onActivityCreated: (createData: Activity) => void
@@ -29,63 +30,75 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
     const [errorMessage, setErrorMessage] = useState("")
 
     return (
-        <form onSubmit={handleSubmit}>
+        <form className="activity-form" onSubmit={handleSubmit}>
             <header>
                 <h2>Create Activity</h2>
                 {successMessage && (<p>{successMessage}</p>)}
                 {errorMessage && (<p>{errorMessage}</p>)}
             </header>
 
-            <label htmlFor="title">Title</label>
-            <input 
-                type="text" 
-                value={formData.title} 
-                onChange={event => setFormData({...formData, title: event.target.value})} 
-                id="title"
-                required
-            />
+            <div className="activity-form__field">
+                <label htmlFor="title">Title</label>
+                <input 
+                    type="text" 
+                    value={formData.title} 
+                    onChange={event => setFormData({...formData, title: event.target.value})} 
+                    id="title"
+                    required
+                />
+            </div>
 
-            <label htmlFor="description">Description</label>
-            <textarea 
-                name="description"
-                value={formData.description}
-                onChange={event => setFormData({...formData, description: event.target.value})}
-                id="description"
-            ></textarea>
+            <div className="activity-form__field">
+                <label htmlFor="description">Description</label>
+                <textarea 
+                    name="description"
+                    value={formData.description}
+                    onChange={event => setFormData({...formData, description: event.target.value})}
+                    id="description"
+                ></textarea>
+            </div>
 
-            <label htmlFor="activityDate">Activity Date</label>
-            <input 
-                type="datetime-local"
-                value={formData.activityDate}
-                onChange={event => setFormData({...formData, activityDate: event.target.value})}
-                id="activityDate"
-                required
-            />
+            <div className="activity-form__row">
+                <div className="activity-form__field">
+                    <label htmlFor="activityDate">Activity Date</label>
+                    <input 
+                        type="datetime-local"
+                        value={formData.activityDate}
+                        onChange={event => setFormData({...formData, activityDate: event.target.value})}
+                        id="activityDate"
+                        required
+                    />
+                </div>
 
-            <label htmlFor="status">Status</label>
-            <select 
-                name="status" 
-                value={formData.status} 
-                onChange={handleStatusChange}
-                id="status"
-                >
-                    <option value="1">Pending</option>
-                    <option value="2">In Progress</option>
-                    <option value="3">Completed</option>
-                    <option value="4">Cancelled</option>
-            </select>
+                <div className="activity-form__field">
+                    <label htmlFor="status">Status</label>
+                    <select 
+                        name="status" 
+                        value={formData.status} 
+                        onChange={handleStatusChange}
+                        id="status"
+                        >
+                            <option value="1">Pending</option>
+                            <option value="2">In Progress</option>
+                            <option value="3">Completed</option>
+                            <option value="4">Cancelled</option>
+                    </select>
+                </div>
 
-            <label htmlFor="priority">Priority</label>
-            <select 
-                name="priority"
-                value={formData.priority}
-                onChange={handlePriorityChange}
-                id="priority"
-                >
-                    <option value="1">Low</option>
-                    <option value="2">Medium</option>
-                    <option value="3">High</option>
-            </select>
+                <div className="activity-form__field">
+                    <label htmlFor="priority">Priority</label>
+                    <select 
+                        name="priority"
+                        value={formData.priority}
+                        onChange={handlePriorityChange}
+                        id="priority"
+                        >
+                            <option value="1">Low</option>
+                            <option value="2">Medium</option>
+                            <option value="3">High</option>
+                    </select>
+                </div>
+            </div>
 
             <button type="submit" disabled={isLoading}>{isLoading ? "Creating..." : "Create"}</button>
             
