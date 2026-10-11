@@ -1,5 +1,5 @@
-import type { ReactNode } from "react"
-import "./EditModal.css"
+import { useEffect, type ReactNode } from "react"
+import "./Modal.css"
 
 type DeleteModalProps = {
     isOpen: boolean
@@ -11,6 +11,19 @@ type DeleteModalProps = {
 }
 
 function DeleteModal({ isOpen, onClose, onConfirm, children, isDeleting, deleteError }: DeleteModalProps) {
+    useEffect(() => {
+        if (!isOpen) {
+            return
+        }
+
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+
+        return () => {
+            document.body.style.overflow = previousOverflow
+        }
+    }, [isOpen])
+
     if (!isOpen) {
         return null
     }
