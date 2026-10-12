@@ -20,3 +20,8 @@ p {
   justify-content: space-between;
   align-items: center;
 }
+
+.activity-edit-button:focus-visible {
+    outline: 3px solid blue;
+    outline-offset: 3px;
+}

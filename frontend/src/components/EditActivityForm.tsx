@@ -8,6 +8,7 @@ type EditActivityFormProps = {
     activity: Activity
     onActivityUpdated: () => void
     onUnsavedChangesChange: (hasChanges: boolean) => void
+    onUpdatingChange: (isUpdating: boolean) => void
 }
 
 function toLocalDateTimeString(dateString: string): string {
@@ -22,7 +23,7 @@ function toLocalDateTimeString(dateString: string): string {
     return `${year}-${month}-${day}T${hours}:${minutes}`
 }
 
-function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange }: EditActivityFormProps) {
+function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange, onUpdatingChange }: EditActivityFormProps) {
     const [title, setTitle] = useState(activity.title)
     const initialTitle = useRef(activity.title)
     const [description, setDescription] = useState(activity.description ?? "")
@@ -170,6 +171,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange 
 
         setErrorMessage("")
         setIsLoading(true)
+        onUpdatingChange(true)
 
         const updateRequest: UpdateActivityRequest = {
             title: title.trim(),
@@ -193,6 +195,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange 
             setErrorMessage("Failed to update activity.")
         } finally {
             setIsLoading(false)
+            onUpdatingChange(false)
         }
     }
 

@@ -1,4 +1,4 @@
-import { type ReactNode } from "react"
+import { useEffect, type ReactNode } from "react"
 import { useLockBodyScroll } from "../hooks/useLockBodyScroll"
 import "./Modal.css"
 
@@ -13,6 +13,24 @@ type DeleteModalProps = {
 
 function DeleteModal({ isOpen, onClose, onConfirm, children, isDeleting, deleteError }: DeleteModalProps) {
     useLockBodyScroll(isOpen)
+
+    useEffect(() => {
+        if (!isOpen || isDeleting) {
+            return
+        }
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                onClose()
+            }
+        }
+
+        document.addEventListener("keydown", handleKeyDown)
+
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown)
+        }
+    }, [isOpen, isDeleting, onClose])
 
     if (!isOpen) {
         return null

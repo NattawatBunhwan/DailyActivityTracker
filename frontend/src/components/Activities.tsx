@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Activity } from "../types/activity";
 import ActivityList from "./ActivityList";
 import { deleteActivity, getActivities, getActivityById } from "../api/activityApi";
@@ -33,6 +33,54 @@ function Activities() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
     const [createdActivity, setCreatedActivity] = useState<Activity | null>(null)
+    const [isUpdatingActivity, setIsUpdatingActivity] = useState(false)
+    const editButtonRef = useRef<HTMLButtonElement | null>(null)
+    const editActivityIdRef = useRef<string | null>(null)
+    const isEditModalOpen = selectedActivityId !== null || selectedActivity !== null
+    const wasEditModalOpenRef = useRef(false)
+    const pendingEditFocusRef = useRef(false)
+    
+    useEffect(() => {
+        loadActivities(auth.token, page)
+    }, [auth.token, page, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger])
+
+    useEffect(() => {
+        if (!selectedActivityId) return
+        
+        loadSelectedActivity(auth.token, selectedActivityId)
+    }, [auth.token, selectedActivityId])
+
+    useEffect(() => {
+        if (wasEditModalOpenRef.current && !isEditModalOpen) {
+            const button = editButtonRef.current
+
+            requestAnimationFrame(() => {
+                if (button?.isConnected) {
+                    button.focus()
+                }
+            })
+        }
+
+        wasEditModalOpenRef.current = isEditModalOpen
+    }, [isEditModalOpen])
+
+    useEffect(() => {
+        if (isLoadingActivities) return
+        if (!pendingEditFocusRef.current) return
+
+        const activityId = editActivityIdRef.current
+        if (!activityId) return
+
+        const selector =
+            `button[data-action="edit"][data-activity-id="${activityId}"]`
+
+        const button = document.querySelector<HTMLButtonElement>(selector)
+
+        if (button?.isConnected) {
+            button.focus()
+            pendingEditFocusRef.current = false
+        }
+    }, [isLoadingActivities, activities])
 
     async function loadActivities(token: string, page: number) {
         setActivitiesError(null)
@@ -65,16 +113,6 @@ function Activities() {
         }
     }
 
-    useEffect(() => {
-        loadActivities(auth.token, page)
-    }, [auth.token, page, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger])
-
-    useEffect(() => {
-        if (!selectedActivityId) return
-        
-        loadSelectedActivity(auth.token, selectedActivityId)
-    }, [auth.token, selectedActivityId])
-
     if (isLoadingActivities) {
         return <p>Loading activities...</p>
     }
@@ -95,6 +133,7 @@ function Activities() {
     }
 
     function handleActivityUpdated() {
+        pendingEditFocusRef.current = true
         setRefreshUpdateTrigger(prev => prev + 1)
         setSelectedActivityId(null)
         setSelectedActivity(null)
@@ -112,110 +151,12 @@ function Activities() {
 
         loadSelectedActivity(auth.token, selectedActivityId)
     }
-    
-    return (
-        <section className="activities">
-            <header className="activities-header">
-                <h2>Activities</h2>
-                {activities.length > 0 && (
-                    <button className="create-activity-button" onClick={handleOpenCreateModal}
-                    >
-                        CreateActivity
-                    </button>
-                )}
-            </header>
-            
-            <button onClick={() => loadActivities(auth.token, page)}>
-                Refresh
-            </button>
-
-            {activities.length === 0 ? (
-                <EmptyState
-                    onOpenCreateModal={handleOpenCreateModal}
-                />
-            ) : (
-                <ActivityList 
-                    activities={activities}
-                    onEdit={handleEditActivity}
-                    onDelete={handleDeleteActivity}
-                    isDeleting={isDeleting}
-                />
-            )}
-
-            <CreateModal
-                isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
-            > 
-                {createdActivity === null ? (
-                    <CreateActivityForm
-                        onActivityCreated={(createData) => {
-                            setRefreshTrigger(prev => prev + 1)
-                            setCreatedActivity(createData)
-                        }   }
-                    />
-                ) : (
-                    <CreatedActivityForm
-                        activityCreated={createdActivity}
-                    />
-                )}
-            </CreateModal> 
-
-            <EditModal
-                isOpen={
-                    selectedActivityId !== null ||
-                    selectedActivity !== null
-                }
-                onClose={handleCloseEditModal}
-            >
-                {isLoadingSelectedActivity ? (
-                    <p>Loading activity...</p>
-                ) : selectedActivityError ? (
-                    <>
-                        <p>{selectedActivityError}</p>
-                        <div className="modal-actions">
-                            <button onClick={handleRetrySelectedActivity}>
-                                Retry
-                            </button>
-                        </div>
-                    </>
-                ) : (
-                    selectedActivity && (
-                        <EditActivityForm
-                            key={selectedActivity.id}
-                            activity={selectedActivity}
-                            onActivityUpdated={handleActivityUpdated}
-                            onUnsavedChangesChange={handleUnsavedChangesChange}
-                        />
-                    )
-                )}
-            </EditModal>
-
-            <DeleteModal
-                isOpen={deleteActivityId !== null}
-                onClose={handleCloseDeleteModal}
-                onConfirm={handleConfirmDelete}
-                isDeleting={isDeleting}
-                deleteError={deleteError}
-            >
-                <h2>Delete Activity</h2>
-                <p className="delete-warning">
-                    Are you sure you want to delete <strong>"{activityToDelete?.title}"</strong>?
-                </p>
-            </DeleteModal>
-            
-            <div className="pagination">
-                <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoadingActivities}>
-                    Previous
-                </button>
-
-                <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoadingActivities}>
-                    Next
-                </button>
-            </div>   
-        </section>
-    )
 
     function handleCloseEditModal() {
+        if (isUpdatingActivity) {
+            return
+        }
+
         if (hasUnsavedChanges) {
             const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?")
             
@@ -269,6 +210,116 @@ function Activities() {
         setCreatedActivity(null)
         setIsCreateModalOpen(true)
     }
+
+    function handleEditButtonClick(button: HTMLButtonElement, activityId: string) {
+        editButtonRef.current = button
+        editActivityIdRef.current = activityId
+    }
+    
+    return (
+        <section className="activities">
+            <header className="activities-header">
+                <h2>Activities</h2>
+                {activities.length > 0 && (
+                    <button className="create-activity-button" onClick={handleOpenCreateModal}
+                    >
+                        CreateActivity
+                    </button>
+                )}
+            </header>
+            
+            <button onClick={() => loadActivities(auth.token, page)}>
+                Refresh
+            </button>
+
+            {activities.length === 0 ? (
+                <EmptyState
+                    onOpenCreateModal={handleOpenCreateModal}
+                />
+            ) : (
+                <ActivityList 
+                    activities={activities}
+                    onEdit={handleEditActivity}
+                    onEditButtonClick={handleEditButtonClick}
+                    onDelete={handleDeleteActivity}
+                    isDeleting={isDeleting}
+                />
+            )}
+
+            <CreateModal
+                isOpen={isCreateModalOpen}
+                onClose={() => setIsCreateModalOpen(false)}
+            > 
+                {createdActivity === null ? (
+                    <CreateActivityForm
+                        onActivityCreated={(createData) => {
+                            setRefreshTrigger(prev => prev + 1)
+                            setCreatedActivity(createData)
+                        }   }
+                    />
+                ) : (
+                    <CreatedActivityForm
+                        activityCreated={createdActivity}
+                    />
+                )}
+            </CreateModal> 
+
+            <EditModal
+                isOpen={
+                    selectedActivityId !== null ||
+                    selectedActivity !== null
+                }
+                onClose={handleCloseEditModal}
+                isUpdating={isUpdatingActivity}
+            >
+                {isLoadingSelectedActivity ? (
+                    <p>Loading activity...</p>
+                ) : selectedActivityError ? (
+                    <>
+                        <p>{selectedActivityError}</p>
+                        <div className="modal-actions">
+                            <button onClick={handleRetrySelectedActivity}>
+                                Retry
+                            </button>
+                        </div>
+                    </>
+                ) : (
+                    selectedActivity && (
+                        <EditActivityForm
+                            key={selectedActivity.id}
+                            activity={selectedActivity}
+                            onActivityUpdated={handleActivityUpdated}
+                            onUnsavedChangesChange={handleUnsavedChangesChange}
+                            onUpdatingChange={setIsUpdatingActivity}
+                        />
+                    )
+                )}
+            </EditModal>
+
+            <DeleteModal
+                isOpen={deleteActivityId !== null}
+                onClose={handleCloseDeleteModal}
+                onConfirm={handleConfirmDelete}
+                isDeleting={isDeleting}
+                deleteError={deleteError}
+            >
+                <h2>Delete Activity</h2>
+                <p className="delete-warning">
+                    Are you sure you want to delete <strong>"{activityToDelete?.title}"</strong>?
+                </p>
+            </DeleteModal>
+            
+            <div className="pagination">
+                <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoadingActivities}>
+                    Previous
+                </button>
+
+                <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoadingActivities}>
+                    Next
+                </button>
+            </div>   
+        </section>
+    )
 }
 
 export default Activities

@@ -4,11 +4,12 @@ import ActivityCard from "./ActivityCard"
 type ActivityListProps = {
     activities: Activity[]
     onEdit: (activityId: string) => void
+    onEditButtonClick: (button: HTMLButtonElement, activityId: string) => void
     onDelete: (activityId: string) => void
     isDeleting: boolean
 }
 
-function ActivityList({ activities, onEdit, onDelete ,isDeleting}:ActivityListProps) {
+function ActivityList({ activities, onEdit, onEditButtonClick, onDelete ,isDeleting}:ActivityListProps) {
     return (
         <div>
             {activities.map((activity) => (
@@ -16,6 +17,7 @@ function ActivityList({ activities, onEdit, onDelete ,isDeleting}:ActivityListPr
                     key={activity.id}
                     activity={activity}
                     onEdit={onEdit}
+                    onEditButtonClick={onEditButtonClick}
                     onDelete={onDelete}
                     isDeleting={isDeleting}
                 />

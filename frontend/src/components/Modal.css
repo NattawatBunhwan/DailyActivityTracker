@@ -33,6 +33,11 @@
     right: 10px;
 }
 
+.modal-close:focus-visible {
+    outline: 3px solid blue;
+    outline-offset: 3px;
+}
+
 .delete-button {
     background: red;
     color: white;
