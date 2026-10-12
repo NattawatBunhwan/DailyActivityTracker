@@ -11,26 +11,82 @@ type EditModalProps = {
 
 function EditModal({ isOpen, onClose, isUpdating, children }: EditModalProps) {
     const closeButtonRef = useRef<HTMLButtonElement>(null)
+    const modalRef = useRef<HTMLDivElement>(null)
+    const dialogRef = useRef<HTMLDialogElement>(null)
 
     useLockBodyScroll(isOpen)
 
     useEffect(() => {
-        if (!isOpen || isUpdating) {
+        const dialog = dialogRef.current
+
+        if (!dialog) {
             return
         }
 
-        function handleKeyDown(event: KeyboardEvent) {
-            if (event.key === "Escape") {
-                onClose()
+        if (isOpen && !dialog.open) {
+            dialog.showModal()
+        } else if (!isOpen && dialog.open) {
+            dialog.close()
+        }
+    }, [isOpen])
+
+    function getFocusableElements() {
+        if (!modalRef.current) {
+            return []
+        }
+
+        return Array.from(
+            modalRef.current.querySelectorAll<HTMLElement>(
+                [
+                    "a[href]",
+                    "button:not([disabled])",
+                    "input:not([disabled])",
+                    "textarea:not([disabled])",
+                    "select:not([disabled])",
+                    '[tabindex]:not([tabindex="-1"])',
+                ].join(",")
+            )
+        ).filter((element) => {
+            return element.getAttribute("aria-hidden") !== "true"
+        })
+    }
+
+    useEffect(() => {
+        if (!isOpen) {
+            return
+        }
+
+        function handleTabKey(event: KeyboardEvent) {
+            if (event.key !== "Tab") {
+                return
+            }
+
+            const focusableElements = getFocusableElements()
+
+            if (focusableElements.length === 0) {
+                event.preventDefault()
+                return
+            }
+
+            const firstElement = focusableElements[0]
+            const lastElement = focusableElements[focusableElements.length - 1]
+
+            if (event.shiftKey && document.activeElement === firstElement) {
+                event.preventDefault()
+                lastElement.focus()
+            } else if (!event.shiftKey && document.activeElement === lastElement
+            ) {
+                event.preventDefault()
+                firstElement.focus()
             }
         }
 
-        document.addEventListener("keydown", handleKeyDown)
+        document.addEventListener("keydown", handleTabKey)
 
         return () => {
-            document.removeEventListener("keydown", handleKeyDown)
+            document.removeEventListener("keydown", handleTabKey)
         }
-    }, [isOpen, onClose, isUpdating])
+    }, [isOpen])
 
     useEffect(() => {
         if (!isOpen) {
@@ -38,18 +94,23 @@ function EditModal({ isOpen, onClose, isUpdating, children }: EditModalProps) {
         }
 
         closeButtonRef.current?.focus()
-
-        console.log("Close button:", closeButtonRef.current)
-        console.log("Focused element:", document.activeElement)
     }, [isOpen])
 
-    if (!isOpen) {
-        return null
-    }
-
     return (
-        <div className="modal-overlay">
-            <div className="modal modal--form">
+        <dialog
+            ref={dialogRef}
+            className="modal-overlay"
+            onCancel={(event) => {
+                event.preventDefault()
+                if (!isUpdating) {
+                    onClose()
+                }
+            }}
+        >
+            <div
+                ref={modalRef}
+                className="modal modal--form"
+            >
                 <button
                     ref={closeButtonRef}
                     type="button"
@@ -63,7 +124,7 @@ function EditModal({ isOpen, onClose, isUpdating, children }: EditModalProps) {
 
                 {children}
             </div>
-        </div>
+        </dialog>
     )
 }
 
