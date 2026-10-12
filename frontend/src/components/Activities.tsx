@@ -27,6 +27,7 @@ function Activities() {
     const [isDeleting, setIsDeleting] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
     const [refreshDeleteTrigger, setRefreshDeleteTrigger] = useState(0)
+    const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [deleteActivityId, setDeleteActivityId] = useState<string | null>(null)
     const activityToDelete = activities.find(activity => activity.id === deleteActivityId)
@@ -139,8 +140,9 @@ function Activities() {
         setSelectedActivity(null)
     }
 
-    function handleDeleteActivity(activityId: string) {
+    function handleDeleteActivity(button: HTMLButtonElement, activityId: string) {
         setDeleteError(null)
+        deleteButtonRef.current = button
         setDeleteActivityId(activityId)
     }
 
@@ -302,8 +304,9 @@ function Activities() {
                 onConfirm={handleConfirmDelete}
                 isDeleting={isDeleting}
                 deleteError={deleteError}
+                triggerButton={deleteButtonRef.current}
             >
-                <h2>Delete Activity</h2>
+                <h2 id="delete-modal-title">Delete Activity</h2>
                 <p className="delete-warning">
                     Are you sure you want to delete <strong>"{activityToDelete?.title}"</strong>?
                 </p>

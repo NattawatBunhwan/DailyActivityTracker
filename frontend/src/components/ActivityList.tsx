@@ -5,7 +5,7 @@ type ActivityListProps = {
     activities: Activity[]
     onEdit: (activityId: string) => void
     onEditButtonClick: (button: HTMLButtonElement, activityId: string) => void
-    onDelete: (activityId: string) => void
+    onDelete: (button: HTMLButtonElement, activityId: string) => void
     isDeleting: boolean
 }
 

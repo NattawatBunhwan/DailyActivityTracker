@@ -6,7 +6,7 @@ type ActivityCardProps = {
     activity: Activity
     onEdit: (activityId: string) => void
     onEditButtonClick: (button: HTMLButtonElement, activityId: string) => void
-    onDelete: (activityId: string) => void
+    onDelete: (button: HTMLButtonElement, activityId: string) => void
     isDeleting: boolean
 }
 
@@ -30,7 +30,9 @@ function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeletin
             </button>
 
             <button 
-                onClick={() => onDelete(activity.id)}
+                onClick={(event: React.MouseEvent<HTMLButtonElement>) =>
+                    onDelete(event.currentTarget, activity.id)
+                }
                 disabled={isDeleting}
             >
                 {isDeleting ? "Deleting..." : "Delete"}
