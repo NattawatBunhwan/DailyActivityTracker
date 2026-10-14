@@ -6,8 +6,25 @@
     justify-content: center;
     align-items: center;
 
+    box-sizing: border-box;
+    width: 100%;
+    max-width: none;
+    height: 100%;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
     z-index: 999;
     background: rgba(0, 0, 0, 0.5);
+    color: inherit;
+}
+
+.modal-overlay::backdrop {
+    background: transparent;
+}
+
+dialog.modal-overlay:not([open]) {
+    display: none;
 }
 
 .modal {
@@ -31,6 +48,11 @@
     position: absolute;
     top: 10px;
     right: 10px;
+}
+
+.modal-close:focus-visible {
+    outline: 3px solid blue;
+    outline-offset: 3px;
 }
 
 .delete-button {

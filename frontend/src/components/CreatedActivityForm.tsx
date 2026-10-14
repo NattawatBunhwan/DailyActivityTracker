@@ -21,7 +21,7 @@ function CreatedActivityForm({ activityCreated }: CreatedActivityFormProps) {
     return (
         <section>
             <header>
-                <h2>Activity Create Success</h2>
+                <h2 role="status">Activity Create Success</h2>
             </header>
 
             <div>

@@ -6,6 +6,7 @@ import "./ActivityForm.css"
 
 type CreateActivityFormProps = {
     onActivityCreated: (createData: Activity) => void
+    onCreatingChange: (isCreating: boolean) => void
 }
 
 type CreateActivityFormData = {
@@ -16,7 +17,7 @@ type CreateActivityFormData = {
     priority: ActivityPriority
 }
 
-function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
+function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActivityFormProps) {
     const [formData, setFormData] = useState<CreateActivityFormData>({
         title: "",
         description: "",
@@ -26,15 +27,15 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
     })
     const auth = useAuth()
     const [isLoading, setIsLoading] = useState(false)
-    const [successMessage, setSuccessMessage] = useState("")
     const [errorMessage, setErrorMessage] = useState("")
 
     return (
         <form className="activity-form" onSubmit={handleSubmit}>
             <header>
-                <h2>Create Activity</h2>
-                {successMessage && (<p>{successMessage}</p>)}
-                {errorMessage && (<p>{errorMessage}</p>)}
+                <h2 id="create-modal-title">Create Activity</h2>
+                {errorMessage && (
+                    <p role="alert">{errorMessage}</p>
+                )}
             </header>
 
             <div className="activity-form__field">
@@ -100,7 +101,13 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
                 </div>
             </div>
 
-            <button type="submit" disabled={isLoading}>{isLoading ? "Creating..." : "Create"}</button>
+            <button
+                type="submit"
+                disabled={isLoading}
+                aria-busy={isLoading}
+            >
+                {isLoading ? "Creating..." : "Create"}
+            </button>
             
         </form>
     )
@@ -113,9 +120,9 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
             return;
         }
 
-        setSuccessMessage("")
         setErrorMessage("")
         setIsLoading(true)
+        onCreatingChange(true)
 
         const request: CreateActivityRequest = {
             title: formData.title.trim(),
@@ -125,23 +132,18 @@ function CreateActivityForm({ onActivityCreated }: CreateActivityFormProps) {
             priority: formData.priority,
         };
 
-        console.log("Ready to send data to API:",request)
-
         try {
             const createData = await createActivity(request, auth.token)
 
             onActivityCreated(createData)
 
-            console.log("Create activity success:",createData)
-
-            setSuccessMessage("Activity created successfully!")
             setErrorMessage("")
         } catch (error) {
             console.error("Fail create activity:",error)
             setErrorMessage("Failed to create activity.")
-            setSuccessMessage("")
         } finally {
             setIsLoading(false)
+            onCreatingChange(false)
         }
     }
 
