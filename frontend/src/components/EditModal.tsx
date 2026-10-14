@@ -57,6 +57,11 @@ function EditModal({ isOpen, onClose, isUpdating, children }: EditModalProps) {
         }
 
         function handleTabKey(event: KeyboardEvent) {
+            if (event.key === "Escape" && isUpdating) {
+                event.preventDefault()
+                return
+            }
+            
             if (event.key !== "Tab") {
                 return
             }
@@ -86,7 +91,7 @@ function EditModal({ isOpen, onClose, isUpdating, children }: EditModalProps) {
         return () => {
             document.removeEventListener("keydown", handleTabKey)
         }
-    }, [isOpen])
+    }, [isOpen, isUpdating])
 
     useEffect(() => {
         if (!isOpen) {
