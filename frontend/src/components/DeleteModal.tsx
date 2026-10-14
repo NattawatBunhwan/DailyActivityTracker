@@ -137,7 +137,7 @@ function DeleteModal({ isOpen, onClose, onConfirm, children, isDeleting, deleteE
                 {children}
 
                 {deleteError && (
-                    <p className="delete-error">
+                    <p className="delete-error" role="alert">
                         {deleteError}
                     </p>
                 )}
@@ -157,6 +157,7 @@ function DeleteModal({ isOpen, onClose, onConfirm, children, isDeleting, deleteE
                         className="delete-button"
                         onClick={onConfirm}
                         disabled={isDeleting}
+                        aria-busy={isDeleting}
                     >
                         {isDeleting ? "Deleting..." : "Delete"}
                     </button>

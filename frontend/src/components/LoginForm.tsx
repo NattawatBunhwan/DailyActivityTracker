@@ -11,13 +11,19 @@ function LoginForm() {
 
     return (
         <div>
-            <input 
+            <label htmlFor="email">Email</label>
+            <input
+                id="email"
+                name="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder="Email" 
             />
 
+            <label htmlFor="password">Password</label>
             <input
+                id="password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}

@@ -1,7 +1,7 @@
 import "./EmptyState.css"
 
 type EmptyStateProps = {
-    onOpenCreateModal: () => void
+    onOpenCreateModal: (trigger: HTMLButtonElement) => void
 }
 
 function EmptyState({ onOpenCreateModal }: EmptyStateProps) {
@@ -13,7 +13,7 @@ function EmptyState({ onOpenCreateModal }: EmptyStateProps) {
 
             <p>You haven't created any activities yet.</p>
 
-            <button onClick={onOpenCreateModal}>
+            <button onClick={(event) => onOpenCreateModal(event.currentTarget)}>
                 Create your first activity
             </button>
         </section>

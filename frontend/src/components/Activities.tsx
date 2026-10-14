@@ -35,11 +35,13 @@ function Activities() {
     const [refreshTrigger, setRefreshTrigger] = useState(0)
     const [createdActivity, setCreatedActivity] = useState<Activity | null>(null)
     const [isUpdatingActivity, setIsUpdatingActivity] = useState(false)
+    const [isCreatingActivity, setIsCreatingActivity] = useState(false)
     const editButtonRef = useRef<HTMLButtonElement | null>(null)
     const editActivityIdRef = useRef<string | null>(null)
     const isEditModalOpen = selectedActivityId !== null || selectedActivity !== null
     const wasEditModalOpenRef = useRef(false)
     const pendingEditFocusRef = useRef(false)
+    const createTriggerRef = useRef<HTMLButtonElement | null>(null)
     
     useEffect(() => {
         loadActivities(auth.token, page)
@@ -83,6 +85,14 @@ function Activities() {
         }
     }, [isLoadingActivities, activities])
 
+    useEffect(() => {
+        if (isCreateModalOpen) {
+            return
+        }
+
+        createTriggerRef.current?.focus()
+    }, [isCreateModalOpen])
+
     async function loadActivities(token: string, page: number) {
         setActivitiesError(null)
         setIsLoadingActivities(true)
@@ -115,13 +125,13 @@ function Activities() {
     }
 
     if (isLoadingActivities) {
-        return <p>Loading activities...</p>
+        return <p role="status">Loading activities...</p>
     }
 
     if (activitiesError) {
         return (
             <>
-                <p>{activitiesError}</p>
+                <p role="alert">{activitiesError}</p>
                 <button onClick={() => loadActivities(auth.token, page)}>
                     Retry
                 </button>
@@ -208,9 +218,14 @@ function Activities() {
         setHasUnsavedChanges(hasChanges)
     }
 
-    function handleOpenCreateModal() {
+    function handleOpenCreateModal(trigger: HTMLButtonElement) {
+        createTriggerRef.current = trigger
         setCreatedActivity(null)
         setIsCreateModalOpen(true)
+    }
+
+    function handleCloseCreateModal() {
+        setIsCreateModalOpen(false)
     }
 
     function handleEditButtonClick(button: HTMLButtonElement, activityId: string) {
@@ -223,7 +238,7 @@ function Activities() {
             <header className="activities-header">
                 <h2>Activities</h2>
                 {activities.length > 0 && (
-                    <button className="create-activity-button" onClick={handleOpenCreateModal}
+                    <button className="create-activity-button" onClick={(event) => handleOpenCreateModal(event.currentTarget)}
                     >
                         CreateActivity
                     </button>
@@ -250,14 +265,16 @@ function Activities() {
 
             <CreateModal
                 isOpen={isCreateModalOpen}
-                onClose={() => setIsCreateModalOpen(false)}
+                onClose={handleCloseCreateModal}
+                isCreating={isCreatingActivity}
             > 
                 {createdActivity === null ? (
                     <CreateActivityForm
                         onActivityCreated={(createData) => {
                             setRefreshTrigger(prev => prev + 1)
                             setCreatedActivity(createData)
-                        }   }
+                        }}
+                        onCreatingChange={setIsCreatingActivity}
                     />
                 ) : (
                     <CreatedActivityForm
@@ -275,10 +292,10 @@ function Activities() {
                 isUpdating={isUpdatingActivity}
             >
                 {isLoadingSelectedActivity ? (
-                    <p>Loading activity...</p>
+                    <p role="status">Loading activity...</p>
                 ) : selectedActivityError ? (
                     <>
-                        <p>{selectedActivityError}</p>
+                        <p role="alert">{selectedActivityError}</p>
                         <div className="modal-actions">
                             <button onClick={handleRetrySelectedActivity}>
                                 Retry

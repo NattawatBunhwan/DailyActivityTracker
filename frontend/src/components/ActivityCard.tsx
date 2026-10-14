@@ -29,7 +29,8 @@ function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeletin
                 Edit
             </button>
 
-            <button 
+            <button
+                aria-label={`Delete ${activity.title}`}
                 onClick={(event: React.MouseEvent<HTMLButtonElement>) =>
                     onDelete(event.currentTarget, activity.id)
                 }

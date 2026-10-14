@@ -59,7 +59,9 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
     return (
         <form className="activity-form" onSubmit={handleSubmit}>
             <h2>Edit Activity</h2>
-            {errorMessage && (<p>{errorMessage}</p>)}
+            {errorMessage && (
+                <p role="alert">{errorMessage}</p>
+            )}
 
             <div className="activity-form__field">
                 <label htmlFor="edit-title">Title</label>
@@ -155,6 +157,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
             <button 
                 type="submit" 
                 disabled={!hasUnsavedChanges || isLoading}
+                aria-busy={isLoading}
             >
                 {isLoading ? "Updating..." : "Update"}
             </button>
