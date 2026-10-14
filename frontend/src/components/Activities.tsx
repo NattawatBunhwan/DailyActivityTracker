@@ -16,6 +16,7 @@ function Activities() {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
     const [activitiesError, setActivitiesError] = useState<string | null>(null)
+    const [hasLoadedActivities, setHasLoadedActivities] = useState(false)
     const [selectedActivityError, setSelectedActivityError] = useState<string | null>(null)
     const [page, setPage] = useState<number>(1)
     const [totalPages, setTotalPages] = useState<number>(0)
@@ -102,6 +103,7 @@ function Activities() {
                 const data = await getActivities(token, page)
                 setActivities(data.items)
                 setTotalPages(data.totalPages)
+                setHasLoadedActivities(true)
             }
         } catch {
             setActivitiesError("Failed to load activities.")
@@ -124,11 +126,11 @@ function Activities() {
         }
     }
 
-    if (isLoadingActivities) {
+    if (isLoadingActivities && !hasLoadedActivities) {
         return <p role="status">Loading activities...</p>
     }
 
-    if (activitiesError) {
+    if (activitiesError && !hasLoadedActivities) {
         return (
             <>
                 <p role="alert">{activitiesError}</p>
@@ -235,6 +237,15 @@ function Activities() {
     
     return (
         <section className="activities">
+            {activitiesError && (
+                <>
+                    <p role="alert">{activitiesError}</p>
+                    <button onClick={() => loadActivities(auth.token, page)}>
+                        Retry
+                    </button>
+                </>
+            )}
+
             <header className="activities-header">
                 <h2>Activities</h2>
                 {activities.length > 0 && (

@@ -65,6 +65,11 @@ function CreateModal({ isOpen, onClose, isCreating, children }: CreateModalProps
         }
 
         function handleTabKey(event: KeyboardEvent) {
+            if (event.key === "Escape" && isCreating) {
+                event.preventDefault()
+                return
+            }
+
             if (event.key !== "Tab") {
                 return
             }
@@ -93,7 +98,7 @@ function CreateModal({ isOpen, onClose, isCreating, children }: CreateModalProps
         return () => {
             document.removeEventListener("keydown", handleTabKey)
         }
-    }, [isOpen])
+    }, [isOpen, isCreating])
 
     useEffect(() => {
         if (!isOpen) {
