@@ -60,7 +60,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
         <form className="activity-form" onSubmit={handleSubmit}>
             <h2>Edit Activity</h2>
             {errorMessage && (
-                <p role="alert">{errorMessage}</p>
+                <p className="error-message" role="alert">{errorMessage}</p>
             )}
 
             <div className="activity-form__field">
@@ -167,6 +167,10 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
     async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault()
 
+        if (isLoading) {
+            return
+        }
+
         if (!auth.token) {
             setErrorMessage("User is not authenticated")
             return;
@@ -179,7 +183,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
         const updateRequest: UpdateActivityRequest = {
             title: title.trim(),
             description: description.trim(),
-            activityDate: activityDate,
+            activityDate: new Date(activityDate).toISOString(),
             status: status,
             priority: priority,
         }
@@ -195,7 +199,8 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
             setErrorMessage("")
         } catch (error) {
             console.error("Fail update activity:",error)
-            setErrorMessage("Failed to update activity.")
+            setErrorMessage(
+                error instanceof Error ? error.message : "Failed to update activity.")
         } finally {
             setIsLoading(false)
             onUpdatingChange(false)
