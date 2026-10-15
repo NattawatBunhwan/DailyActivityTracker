@@ -287,6 +287,7 @@ public class ActivityServiceTests
         Assert.Equal("Read for 30 minutes", result.Description);
         Assert.Equal(ActivityStatus.InProgress, result.Status);
         Assert.Equal(ActivityPriority.Medium, result.Priority);
+        Assert.Equal(request.ActivityDate, result.ActivityDate);
 
         activityRepository.Verify(
             repo => repo.AddAsync(
@@ -294,6 +295,7 @@ public class ActivityServiceTests
                     activity.UserId == userId &&
                     activity.Title == request.Title &&
                     activity.Description == request.Description &&
+                    activity.ActivityDate == request.ActivityDate &&
                     activity.Status == request.Status &&
                     activity.Priority == request.Priority),
                 It.IsAny<CancellationToken>()),

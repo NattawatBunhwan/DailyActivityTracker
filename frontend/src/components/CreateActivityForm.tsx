@@ -34,7 +34,7 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
             <header>
                 <h2 id="create-modal-title">Create Activity</h2>
                 {errorMessage && (
-                    <p role="alert">{errorMessage}</p>
+                    <p className="error-message" role="alert">{errorMessage}</p>
                 )}
             </header>
 
@@ -115,6 +115,10 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
     async function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault()
 
+        if (isLoading) {
+            return
+        }
+
         if (!auth.token) {
             setErrorMessage("User is not authenticated")
             return;
@@ -127,7 +131,7 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
         const request: CreateActivityRequest = {
             title: formData.title.trim(),
             description: formData.description.trim() === "" ? null : formData.description.trim(),
-            activityDate: formData.activityDate,
+            activityDate: new Date(formData.activityDate).toISOString(),
             status: formData.status,
             priority: formData.priority,
         };
@@ -140,7 +144,9 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
             setErrorMessage("")
         } catch (error) {
             console.error("Fail create activity:",error)
-            setErrorMessage("Failed to create activity.")
+            setErrorMessage(
+                error instanceof Error ? error.message : "Failed to create activity."
+            )
         } finally {
             setIsLoading(false)
             onCreatingChange(false)
