@@ -46,8 +46,10 @@ function LoginForm() {
             auth.setToken(loginData.token)
             auth.setExpiresAt(loginData.expiresAt)
             auth.setRefreshToken(loginData.refreshToken)
-        } catch {
-            setError('Unable to connect to the server')
+        } catch (error) {
+            setError(
+                error instanceof Error ? error.message : 'Unable to connect to the server'
+            )
         } finally {
             setIsLoading(false)
         }

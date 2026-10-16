@@ -1,3 +1,5 @@
+import { handleApiError } from "./apiError"
+
 type LoginRequest = {
     email: string
     password: string
@@ -7,6 +9,39 @@ type AuthResponse = {
     token: string
     expiresAt: string
     refreshToken: string
+}
+
+type RegisterRequest = {
+    email: string
+    password: string
+    firstName: string
+    lastName: string
+    age: number
+    occupation: string
+}
+
+type RegisterResponse = {
+    id: string
+    firstName: string
+    lastName: string
+    age: number
+    occupation: string
+}
+
+export async function register(request: RegisterRequest): Promise<RegisterResponse> {
+    const response = await fetch('https://localhost:7127/api/users', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(request)
+    })
+
+    await handleApiError(response, 'Registration failed')
+
+    const data: RegisterResponse = await response.json()
+
+    return data
 }
 
 export async function login({ email, password }: LoginRequest): Promise<AuthResponse> {
@@ -21,9 +56,7 @@ export async function login({ email, password }: LoginRequest): Promise<AuthResp
         })
     })
 
-    if (!response.ok) {
-        throw new Error('Login failed')
-    }
+    await handleApiError(response, 'Login failed')
 
     const data: AuthResponse = await response.json()
 
@@ -41,9 +74,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResp
         })
     })
 
-    if (!response.ok) {
-        throw new Error('Refresh failed')
-    }
+    await handleApiError(response, 'Refresh failed')
 
     const data: AuthResponse = await response.json()
 
@@ -62,7 +93,5 @@ export async function logoutFromServer(token: string, refreshToken: string) {
         })
     })
 
-    if (!response.ok) {
-        throw new Error("Failed to logout from server");
-    }
+    await handleApiError(response, 'Failed to logout from server')
 }

@@ -1,21 +1,5 @@
 import type { Activity, ActivitiesResponse, CreateActivityRequest, UpdateActivityRequest } from "../types/activity"
-
-type ApiErrorResponse = {
-    title?: string
-    status?: number
-    errors?: Record<string, string[]>
-}
-
-// Shared Error Handler
-async function handleApiError(response: Response, fallbackMessage: string): Promise<void> {
-    if (!response.ok) {
-        const errorData: ApiErrorResponse = await response.json()
-
-        const errorMessages = Object.values(errorData.errors ?? {}).flat().join(" ")
-
-        throw new Error(errorMessages || errorData.title || fallbackMessage)
-    }
-}
+import { handleApiError } from "./apiError"
 
 // Activity API Functions
 export async function createActivity(request: CreateActivityRequest, token: string): Promise<Activity> {

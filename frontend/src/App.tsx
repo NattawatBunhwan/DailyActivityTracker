@@ -3,9 +3,12 @@ import './App.css'
 import LoginForm from './components/LoginForm'
 import useAuth from './hooks/useAuth'
 import Activities from './components/Activities'
+import RegisterForm from './components/RegisterForm'
+import { useState } from 'react'
 
 function App() {
   const auth = useAuth()
+  const [showRegister, setShowRegister] = useState(false)
   
   return (
     <main>
@@ -31,9 +34,27 @@ function App() {
         
       ) : (
         <>
-          <p>Not logged in</p>
-        
-          <LoginForm/>
+          {showRegister ? (
+            <>
+              <RegisterForm />
+
+              <p>Already have an account?</p>
+              <button onClick={() => setShowRegister(false)}>
+                Back to Login
+              </button>
+            </>
+          ) : (
+            <>
+              <p>Not logged in</p>
+
+              <LoginForm/>
+
+              <p>Don't have an account?</p>
+              <button onClick={() => setShowRegister(true)}>
+                Create Account
+              </button>
+            </>
+          )}
         </>
       )}
     </main>
@@ -42,6 +63,7 @@ function App() {
   function handleLogout() {
     if (window.confirm("Are you sure you want to logout")) {
       auth.logout()
+      setShowRegister(false)
     }
   }
 }
