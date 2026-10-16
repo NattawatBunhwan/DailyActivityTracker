@@ -12,10 +12,12 @@ function App() {
   
   return (
     <main>
-      <Header 
-        title="Daily Activity Tracker"
-        description="Track your activities and stay organized." 
-      />
+      <div className="app-header">
+        <Header 
+          title="Daily Activity Tracker"
+          description="Track your activities and stay organized." 
+        />
+      </div>
 
       {auth.isAuthenticated ? (
         <>
@@ -38,22 +40,26 @@ function App() {
             <>
               <RegisterForm />
 
-              <p>Already have an account?</p>
-              <button onClick={() => setShowRegister(false)}>
-                Back to Login
-              </button>
+              <div className="auth-footer">
+                <p>Already have an account?</p>
+                <button onClick={() => setShowRegister(false)}>
+                  Back to Login
+                </button>
+              </div>
             </>
           ) : (
-            <>
-              <p>Not logged in</p>
+            <div className="auth-container">
+              <p className="auth-status">Not logged in</p>
 
               <LoginForm/>
 
-              <p>Don't have an account?</p>
-              <button onClick={() => setShowRegister(true)}>
-                Create Account
-              </button>
-            </>
+              <div className="auth-footer">
+                <p>Don't have an account?</p>
+                <button onClick={() => setShowRegister(true)}>
+                  Create Account
+                </button>
+              </div>
+            </div>
           )}
         </>
       )}

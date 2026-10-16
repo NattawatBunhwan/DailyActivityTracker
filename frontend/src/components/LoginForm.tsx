@@ -1,6 +1,7 @@
-import { useState } from "react"
+import { useState, type SubmitEvent } from "react"
 import { login } from "../api/authApi"
 import useAuth from "../hooks/useAuth"
+import './LoginForm.css'
 
 function LoginForm() {
     const [email, setEmail] = useState('')
@@ -10,32 +11,55 @@ function LoginForm() {
     const auth = useAuth()
 
     return (
-        <div>
-            <label htmlFor="email">Email</label>
-            <input
-                id="email"
-                name="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="Email" 
-            />
+        <form className="login-form" onSubmit={handleLogin}>
+            <h2>Login</h2>
 
-            <label htmlFor="password">Password</label>
-            <input
-                id="password"
-                name="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Password"
-            />
+            <div className="form-group">
+                <label htmlFor="email">Email</label>
+                <input
+                    id="email"
+                    name="email"
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="Email"
+                    autoComplete="email"
+                    required
+                />
+            </div>
 
-            {isLoading ? (<p>Loading...</p>) : (<button onClick={handleLogin}>Login</button>)}
-            {error && <p>{error}</p>}
-        </div>
+            <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Password"
+                    autoComplete="current-password"
+                    required
+                />
+            </div>
+
+            <button
+                type="submit"
+                disabled={isLoading}
+                aria-busy={isLoading}
+            >
+                {isLoading ? 'Logging in...' : 'Login'}
+            </button>
+            
+            {error && (
+                <p className="error-message" role="alert">
+                    {error}
+                </p>
+            )}
+        </form>
     )
     
-    async function handleLogin() {
+    async function handleLogin(event: SubmitEvent<HTMLFormElement>) {
+        event.preventDefault()
+        
         setError('')
         setIsLoading(true)
         
