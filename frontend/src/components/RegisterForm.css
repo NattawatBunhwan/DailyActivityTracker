@@ -1,3 +1,122 @@
-.error-message {
+.register-form {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 480px;
+    margin: 32px auto;
+    padding: 32px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
+}
+
+.register-form h2 {
+    margin: 0 0 24px;
+    color: #111827;
+    font-size: 1.5rem;
+    text-align: center;
+}
+
+.register-form .form-group {
+    margin-bottom: 18px;
+}
+
+.register-form label {
+    display: block;
+    margin-bottom: 7px;
+    color: #374151;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.register-form input,
+.register-form select {
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    background: #ffffff;
+    color: #111827;
+    font: inherit;
+    transition: border-color 0.2s ease,
+                box-shadow 0.2s ease;
+}
+
+.register-form input:focus-visible,
+.register-form select:focus-visible {
+    outline: none;
+    border-color: #2563eb;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.register-form button {
+    width: 100%;
+    min-height: 44px;
+    padding: 11px 16px;
+    border: none;
+    border-radius: 7px;
+    background: #2563eb;
+    color: #ffffff;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.register-form button:hover:not(:disabled) {
+    background: #1d4ed8;
+}
+
+.register-form button:focus-visible {
+    outline: 3px solid #93c5fd;
+    outline-offset: 3px;
+}
+
+.register-form button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.register-form .error-message {
+    margin-top: 12px;
     color: #dc2626;
+    font-size: 0.9rem;
+}
+
+.age-field {
+  width: 100%;
+}
+
+.age-number-field {
+  width: 100%;
+}
+
+.age-number-group {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 8px;
+  width: 100%;
+}
+
+.age-number-group > button {
+  flex: 0 0 44px;
+  border-radius: 7px;
+}
+
+.age-number-group > input {
+  flex: 1;
+  min-width: 0;
+  width: auto;
+  text-align: center;
+  border-radius: 7px;
+}
+
+@media (max-width: 600px) {
+    .register-form {
+        margin: 24px auto;
+        padding: 24px 18px;
+    }
 }

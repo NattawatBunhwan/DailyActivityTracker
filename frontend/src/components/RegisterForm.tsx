@@ -1,6 +1,7 @@
 import { useState, type SubmitEvent } from "react";
 import { login, register } from "../api/authApi";
 import  useAuth  from "../hooks/useAuth"
+import { Label, NumberField } from '@heroui/react';
 import './RegisterForm.css'
 
 function RegisterForm() {
@@ -10,7 +11,7 @@ function RegisterForm() {
     const [password, setPassword] = useState('')
     const [firstName, setFirstName] = useState('')
     const [lastName, setLastName] = useState('')
-    const [age, setAge] = useState('')
+    const [age, setAge] = useState('1')
     const [occupation, setOccupation] = useState('')
 
     const [isLoading, setIsLoading] = useState(false)
@@ -24,17 +25,30 @@ function RegisterForm() {
         }
 
         setError('')
+
+        const parsedAge = Number(age);
+        
+        if (
+            age.trim() === '' ||
+            !Number.isInteger(parsedAge) ||
+            parsedAge < 1 ||
+            parsedAge > 150
+        ) {
+            setError('Please enter a valid age between 1 and 150.');
+            return;
+        }
+        
         setIsLoading(true)
-
+        
         let registrationCompleted = false
-
+        
         try {
             await register({
                 email,
                 password,
                 firstName,
                 lastName,
-                age: Number(age),
+                age: parsedAge,
                 occupation,
             })
 
@@ -60,88 +74,92 @@ function RegisterForm() {
     }
 
     return (
-        <form onSubmit={handleRegister}>
-            <h2>Creat Account</h2>
+        <form className="register-form" onSubmit={handleRegister}>
+            <h2>Create Account</h2>
 
-            <div>
+            <div className="form-group">
                 <label htmlFor="register-email">Email</label>
                 <input
                     id="register-email"
+                    name="email"
                     type="email"
+                    placeholder="Enter your email address"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     required
                 />
             </div>
 
-            <div>
+            <div className="form-group">
                 <label htmlFor="register-password">Password</label>
                 <input
                     id="register-password"
+                    name="password"
                     type="password"
+                    placeholder="Create a password"
                     value={password}
                     onChange={(event) => setPassword(event.target.value)}
                     required
                 />
             </div>
 
-            <div>
+            <div className="form-group">
                 <label htmlFor="register-first-name">First Name</label>
                 <input
                     id="register-first-name"
+                    name="firstName"
+                    placeholder="Enter your first name"
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     required
                 />
             </div>
 
-            <div>
+            <div className="form-group">
                 <label htmlFor="register-last-name">Last Name</label>
                 <input
                     id="register-last-name"
+                    name="lastName"
+                    placeholder="Enter your last name"
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     required
                 />
             </div>
-
-            <div>
-                <label htmlFor="register-age">Age</label>
-                <input
-                    id="register-age"
-                    type="number"
-                    min="1"
-                    max="150"
-                    value={age}
-                    onChange={(event) => setAge(event.target.value)}
-                    list="age-suggestions"
-                    required
-                />
-    
-                <datalist id="age-suggestions">
-                    <option value="15" />
-                    <option value="18" />
-                    <option value="20" />
-                    <option value="25" />
-                    <option value="30" />
-                    <option value="35" />
-                    <option value="40" />
-                    <option value="50" />
-                    <option value="60" />
-                </datalist>
+            
+            <div className="form-group age-field">
+                <NumberField
+                    className="age-number-field"
+                    name="age"
+                    minValue={1}
+                    maxValue={150}
+                    step={1}
+                    value={age === '' ? NaN : Number(age)}
+                    onChange={(value) => {setAge(Number.isNaN(value) ? '' : String(value))}}
+                    
+                >
+                    <Label>Age</Label>
+                    <NumberField.Group className="age-number-group">
+                    <NumberField.DecrementButton />
+                    <NumberField.Input className="age-number-input" />
+                    <NumberField.IncrementButton />
+                    </NumberField.Group>
+                </NumberField>
             </div>
 
-            <div>
+            <div className="form-group">
                 <label htmlFor="register-occupation">Occupation</label>
                 <input
                     id="register-occupation"
+                    name="occupation"
+                    placeholder="e.g. Teacher"
                     value={occupation}
                     onChange={(event) => setOccupation(event.target.value)}
                     required
                 />
             </div>
 
-            <div>
+            <div className="form-group">
                 <button
                     type="submit"
                     disabled={isLoading}
@@ -151,7 +169,11 @@ function RegisterForm() {
                 </button>
             </div>
 
-            {error && <p className="error-message" role="alert">{error}</p>}
+            {error && (
+                <p className="error-message" role="alert">
+                    {error}
+                </p>
+            )}
         </form>
     )
 }
