@@ -35,9 +35,7 @@ public class ActivitiesController : ControllerBase
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [HttpGet]
-    public async Task<ActionResult<PagedResponse<ActivityResponse>>> GetAll(
-    [FromQuery] ActivityQueryParameters query,
-    CancellationToken cancellationToken = default)
+    public async Task<ActionResult<PagedResponse<ActivityResponse>>> GetAll([FromQuery] ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
         var currentUserId = _currentUserService.UserId;
 
@@ -47,6 +45,18 @@ public class ActivitiesController : ControllerBase
             cancellationToken);
 
         return Ok(activities);
+    }
+
+    [ProducesResponseType(typeof(ActivitySummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [HttpGet("summary")]
+    public async Task<ActionResult<ActivitySummaryResponse>> GetSummary(CancellationToken cancellationToken = default)
+    {
+        var currentUserId = _currentUserService.UserId;
+
+        var summary = await _activityService.GetSummaryByUserIdAsync(currentUserId, cancellationToken);
+
+        return Ok(summary);
     }
 
     [HttpGet("{id:guid}")]
@@ -65,10 +75,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPut("{activityId:guid}")]
-    public async Task<ActionResult<ActivityResponse>> Update(
-        Guid activityId,
-        UpdateActivityRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ActivityResponse>> Update(Guid activityId, UpdateActivityRequest request, CancellationToken cancellationToken = default)
     {
         var currentUserId = _currentUserService.UserId;
 

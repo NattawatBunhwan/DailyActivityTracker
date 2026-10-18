@@ -9,6 +9,8 @@ public interface IActivityService
 
     Task<PagedResponse<ActivityResponse>> GetAllAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
 
+    Task<ActivitySummaryResponse> GetSummaryByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+
     Task<ActivityResponse?> GetByIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default);
 
     Task<ActivityResponse?> UpdateAsync(Guid activityId, Guid userId, UpdateActivityRequest request, CancellationToken cancellationToken = default);

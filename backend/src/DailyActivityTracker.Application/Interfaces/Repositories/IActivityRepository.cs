@@ -10,10 +10,12 @@ public interface IActivityRepository
     Task<Activity?> GetByIdAndUserIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default);
 
     Task<List<Activity>> GetAllByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
-    
+
     Task<List<Activity>> GetAllAsync(CancellationToken cancellationToken = default);
 
     Task<int> CountByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
+
+    Task<ActivitySummaryResponse> GetSummaryByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 
     Task AddAsync(Activity activity, CancellationToken cancellationToken = default);
 

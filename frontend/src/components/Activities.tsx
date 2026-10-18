@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import type { Activity } from "../types/activity";
+import type { Activity, ActivityStatus, ActivityPriority, ActivitySummary } from "../types/activity";
 import ActivityList from "./ActivityList";
-import { deleteActivity, getActivities, getActivityById } from "../api/activityApi";
+import { deleteActivity, getActivities, getActivityById, getActivitySummary } from "../api/activityApi";
 import useAuth from "../hooks/useAuth";
 import EditActivityForm from "./EditActivityForm";
 import EditModal from "./EditModal";
@@ -11,14 +11,24 @@ import CreateModal from "./CreateModal";
 import CreateActivityForm from "./CreateActivityForm";
 import "./Activities.css"
 import CreatedActivityForm from "./CreatedActivityForm";
+import { Layers, Clock3, RefreshCw, CircleCheck } from "lucide-react"
 
 function Activities() {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
+    const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null)
+    const [summaryError, setSummaryError] = useState<string | null>(null)
+    const [isLoadingSummary, setIsLoadingSummary] = useState(false)
     const [activitiesError, setActivitiesError] = useState<string | null>(null)
     const [hasLoadedActivities, setHasLoadedActivities] = useState(false)
     const [selectedActivityError, setSelectedActivityError] = useState<string | null>(null)
     const [page, setPage] = useState<number>(1)
+    const [statusFilter, setStatusFilter] = useState<ActivityStatus | "">("")
+    const [priorityFilter, setPriorityFilter] = useState<ActivityPriority | "">("")
+    const [search, setSearch] = useState("")
+    const [debouncedSearch, setDebouncedSearch] = useState("")
+    const [sortBy, setSortBy] = useState("createdat")
+    const [descending, setDescending] = useState(true)
     const [totalPages, setTotalPages] = useState<number>(0)
     const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
@@ -43,10 +53,29 @@ function Activities() {
     const wasEditModalOpenRef = useRef(false)
     const pendingEditFocusRef = useRef(false)
     const createTriggerRef = useRef<HTMLButtonElement | null>(null)
+    const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     
     useEffect(() => {
+        setPage(1)
+    }, [statusFilter, priorityFilter, search, sortBy, descending])
+
+    useEffect(() => {
+        const timeoutId = setTimeout(() => {
+            setDebouncedSearch(search.trim())
+        }, 400)
+
+        return () => {
+            clearTimeout(timeoutId)
+        }
+    }, [search])
+
+    useEffect(() => {
         loadActivities(auth.token, page)
-    }, [auth.token, page, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger])
+    }, [auth.token, page, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger, statusFilter, priorityFilter, debouncedSearch, sortBy, descending])
+
+    useEffect(() => {
+        loadActivitySummary(auth.token)
+    }, [auth.token, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger])
 
     useEffect(() => {
         if (!selectedActivityId) return
@@ -99,17 +128,44 @@ function Activities() {
         setIsLoadingActivities(true)
 
         try {
-            if (token) {
-                const data = await getActivities(token, page)
-                setActivities(data.items)
-                setTotalPages(data.totalPages)
-                setHasLoadedActivities(true)
+            if (!token) {
+                setActivitiesError("Authentication required.")
             }
+            const data = await getActivities(token, {
+                page,
+                pageSize: 10,
+                ...(statusFilter !== "" && { status: statusFilter }),
+                ...(priorityFilter !== "" && { priority: priorityFilter }),
+                ...(debouncedSearch && { search: debouncedSearch }),
+                ...(sortBy && { sortBy, descending}),
+            })
+
+            setActivities(data.items)
+            setTotalPages(data.totalPages)
+            setHasLoadedActivities(true)
+            
         } catch {
             setActivitiesError("Failed to load activities.")
         } finally {
             setIsLoadingActivities(false)
         }        
+    }
+
+    async function loadActivitySummary(token: string) {
+        if (!token) return
+
+        setSummaryError(null)
+        setIsLoadingSummary(true)
+
+        try {
+            const data = await getActivitySummary(token)
+
+            setActivitySummary(data)
+        } catch {
+            setActivitiesError("Failed to load activity summary.")
+        } finally {
+            setIsLoadingSummary(false)
+        }
     }
 
     async function loadSelectedActivity(token: string, activityId: string) {
@@ -124,21 +180,6 @@ function Activities() {
         } finally {
             setIsLoadingSelectedActivity(false)
         }
-    }
-
-    if (isLoadingActivities && !hasLoadedActivities) {
-        return <p role="status">Loading activities...</p>
-    }
-
-    if (activitiesError && !hasLoadedActivities) {
-        return (
-            <>
-                <p role="alert">{activitiesError}</p>
-                <button onClick={() => loadActivities(auth.token, page)}>
-                    Retry
-                </button>
-            </>
-        )
     }
 
     function handleEditActivity(activityId: string) {
@@ -237,6 +278,207 @@ function Activities() {
     
     return (
         <section className="activities">
+            <header className="activities-page-header">
+                <h1>Daily Activities</h1>
+
+                <div className="activities-page-actions">
+                    {hasLoadedActivities &&
+                        !isLoadingActivities &&
+                        !activitiesError &&
+                        activities.length > 0 && (
+                        <>
+                            <button
+                                type="button"
+                                className="refresh-activities-button"
+                                onClick={() => loadActivities(auth.token, page)}
+                                disabled={isLoadingActivities}
+                            >
+                                {isLoadingActivities ? "Refreshing..." : "Refresh"}
+                            </button>
+
+                            <button
+                                type="button"
+                                className="create-activity-button"
+                                onClick={(event) =>
+                                    handleOpenCreateModal(event.currentTarget)
+                                }
+                            >
+                                + Create Activity
+                            </button>
+                        </>
+                    )}
+                </div>
+            </header>
+
+            <div className="activity-summary">
+                <div className="summary-card summary-total">
+                    <div className="summary-card-heading">
+                        <span className="summary-icon">
+                            <Layers size={20} aria-hidden="true" />
+                        </span>
+                        <h3>Total Activities</h3>
+                    </div>
+
+                    {isLoadingSummary && activitySummary === null ? (
+                        <p role="status">Loading...</p>
+                    ) : summaryError ? (
+                        <p role="alert">{summaryError}</p>
+                    ) : (
+                        <p className="summary-value">
+                            {activitySummary?.totalActivities ?? 0}
+                        </p>
+                    )}
+                </div>
+
+                <div className="summary-card summary-pending">
+                    <div className="summary-card-heading">
+                        <span className="summary-icon">
+                            <Clock3 size={20} aria-hidden="true" />
+                        </span>
+                        <h3>Pending</h3>
+                    </div>
+
+                    {isLoadingSummary && activitySummary === null ? (
+                        <p role="status">Loading...</p>
+                    ) : summaryError ? (
+                        <p role="alert">{summaryError}</p>
+                    ) : (
+                        <p className="summary-value">
+                            {activitySummary?.pendingCount ?? 0}
+                        </p>
+                    )}
+                </div>
+
+                <div className="summary-card summary-in-progress">
+                    <div className="summary-card-heading">
+                        <span className="summary-icon">
+                            <RefreshCw size={20} aria-hidden="true"/>
+                        </span>
+                        <h3>In Progress</h3>
+                    </div>
+
+                    {isLoadingSummary && activitySummary === null ? (
+                        <p role="status">Loading...</p>
+                    ) : summaryError ? (
+                        <p role="alert">{summaryError}</p>
+                    ) : (
+                        <p className="summary-value">
+                            {activitySummary?.inProgressCount ?? 0}
+                        </p>
+                    )}
+                </div>
+
+                <div className="summary-card summary-completed">
+                    <div className="summary-card-heading">
+                        <span className="summary-icon">
+                            <CircleCheck size={20} aria-hidden="true"/>
+                        </span>
+                        <h3>Completed</h3>
+                    </div>
+
+                    {isLoadingSummary && activitySummary === null ? (
+                        <p role="status">Loading...</p>
+                    ) : summaryError ? (
+                        <p role="alert">{summaryError}</p>
+                    ) : (
+                        <p className="summary-value">
+                            {activitySummary?.completedCount ?? 0}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {summaryError && (
+                <p role="alert">{summaryError}</p>
+            )}
+
+            {isFiltersOpen && (
+                <div className="activities-filters" id="activity-filters">
+                    <label>
+                        Status
+                        <select
+                            value={statusFilter}
+                            onChange={(event) => {
+                                const value = event.target.value
+                                setStatusFilter(
+                                    value === "" ? "" : Number(value) as ActivityStatus
+                                )
+                                setPage(1)
+                            }}
+                        >
+                            <option value="">All statuses</option>
+                            <option value={1}>Pending</option>
+                            <option value={2}>In Progress</option>
+                            <option value={3}>Completed</option>
+                            <option value={4}>Cancelled</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Priority
+                        <select
+                            value={priorityFilter}
+                            onChange={(event) => {
+                                const value = event.target.value
+                                setPriorityFilter(
+                                    value === "" ? "" : Number(value) as ActivityPriority
+                                )
+                                setPage(1)
+                            }}
+                        >
+                            <option value="">All priorities</option>
+                            <option value={1}>Low</option>
+                            <option value={2}>Medium</option>
+                            <option value={3}>High</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Search activities
+                        <input
+                            type="search"
+                            value={search}
+                            placeholder="Search by title..."
+                            onChange={(event) => {
+                                setSearch(event.target.value)
+                                setPage(1)
+                            }}
+                        />
+                    </label>
+                    
+                    <label>
+                        Sort by
+                        <select
+                            value={sortBy}
+                            onChange={(event) => {
+                                setSortBy(event.target.value)
+                                setPage(1)
+                            }}
+                        >
+                            <option value="createdat">Date created</option>
+                            <option value="activitydate">Activity date</option>
+                            <option value="title">Title</option>
+                            <option value="status">Status</option>
+                            <option value="priority">Priority</option>
+                        </select>
+                    </label>
+
+                    <label>
+                        Sort order
+                        <select
+                            value={descending ? "desc" : "asc"}
+                            onChange={(event) => {
+                                setDescending(event.target.value === "desc")
+                                setPage(1)
+                            }}
+                        >
+                            <option value="desc">Descending</option>
+                            <option value="asc">Ascending</option>
+                        </select>
+                    </label>
+                </div>
+            )}
+
             {activitiesError && (
                 <>
                     <p role="alert">{activitiesError}</p>
@@ -245,27 +487,55 @@ function Activities() {
                     </button>
                 </>
             )}
+    
+            <header className="activity-list-header">
+                <h2>Activity List</h2>
 
-            <header className="activities-header">
-                <h2>Activities</h2>
-                {activities.length > 0 && (
-                    <button className="create-activity-button" onClick={(event) => handleOpenCreateModal(event.currentTarget)}
+                <button
+                    type="button"
+                    className="filter-toggle-button"
+                    aria-label={isFiltersOpen ? "Hide filters" : "Show filters"}
+                    aria-expanded={isFiltersOpen}
+                    aria-controls="activity-filters"
+                    onClick={() => setIsFiltersOpen((open) => !open)}
+                >
+                    <svg
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
                     >
-                        CreateActivity
-                    </button>
-                )}
+                        <path d="M4 7h16" />
+                        <path d="M7 12h10" />
+                        <path d="M10 17h4" />
+                    </svg>
+                </button>
             </header>
-            
-            <button onClick={() => loadActivities(auth.token, page)}>
-                Refresh
-            </button>
 
-            {activities.length === 0 ? (
+            {!hasLoadedActivities || isLoadingActivities ? (
+                <p role="status">Loading activities...</p>
+            ) : activitiesError ? (
+                <div className="activities-error">
+                    <p role="alert">{activitiesError}</p>
+                    <button
+                        type="button"
+                        onClick={() => loadActivities(auth.token, page)}
+                        disabled={isLoadingActivities}
+                    >
+                        Retry
+                    </button>
+                </div>
+            ) : activities.length === 0 ? (
                 <EmptyState
                     onOpenCreateModal={handleOpenCreateModal}
                 />
             ) : (
-                <ActivityList 
+                <ActivityList
                     activities={activities}
                     onEdit={handleEditActivity}
                     onEditButtonClick={handleEditButtonClick}

@@ -57,6 +57,11 @@ public class ActivityService : IActivityService
         };
     }
 
+    public Task<ActivitySummaryResponse> GetSummaryByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return _activityRepository.GetSummaryByUserIdAsync(userId, cancellationToken);
+    }
+
     public async Task<ActivityResponse?> GetByIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default)
     {
         var activity = await _activityRepository.GetByIdAndUserIdAsync(activityId, userId, cancellationToken);

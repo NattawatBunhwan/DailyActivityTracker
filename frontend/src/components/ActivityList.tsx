@@ -11,7 +11,7 @@ type ActivityListProps = {
 
 function ActivityList({ activities, onEdit, onEditButtonClick, onDelete ,isDeleting}:ActivityListProps) {
     return (
-        <div>
+        <div className="activity-list">
             {activities.map((activity) => (
                 <ActivityCard
                     key={activity.id}

@@ -42,3 +42,20 @@ export type ActivitiesResponse = {
     totalPages: number
     items: Activity[]
 }
+
+export type ActivityQuery = {
+    page?: number
+    pageSize?: number
+    status?: ActivityStatus
+    priority?: ActivityPriority
+    search?: string
+    sortBy?: string
+    descending?: boolean
+}
+
+export type ActivitySummary = {
+    totalActivities: number
+    pendingCount: number
+    inProgressCount: number
+    completedCount: number
+}
