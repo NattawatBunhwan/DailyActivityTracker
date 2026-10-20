@@ -119,6 +119,8 @@ public class ActivityService : IActivityService
         {
             Id = activity.Id,
             UserId = activity.UserId,
+            CreatedAt = activity.CreatedAt,
+            UpdatedAt = activity.UpdatedAt,
             Title = activity.Title,
             Description = activity.Description,
             ActivityDate = activity.ActivityDate,

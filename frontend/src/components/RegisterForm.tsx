@@ -4,7 +4,7 @@ import  useAuth  from "../hooks/useAuth"
 import { Label, NumberField } from '@heroui/react';
 import './RegisterForm.css'
 
-function RegisterForm() {
+function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
     const auth = useAuth()
 
     const [email, setEmail] = useState('')
@@ -60,6 +60,7 @@ function RegisterForm() {
             auth.setToken(loginData.token)
             auth.setExpiresAt(loginData.expiresAt)
             auth.setRefreshToken(loginData.refreshToken)
+            onAuthenticated()
         } catch (error) {
             if (registrationCompleted) {
                 setError('Account created successfully, but login failed. Please login with your new account.')

@@ -12,6 +12,8 @@ export type ActivityPriority =
 export type Activity = {
     id: string
     userId: string
+    createdAt: string
+    updatedAt: string | null
     title: string
     description: string | null
     activityDate: string

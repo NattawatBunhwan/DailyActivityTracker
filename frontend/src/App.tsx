@@ -4,12 +4,29 @@ import LoginForm from './components/LoginForm'
 import useAuth from './hooks/useAuth'
 import Activities from './components/Activities'
 import RegisterForm from './components/RegisterForm'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CalendarCheck, LogOut, UserRound, UserRoundPlus } from "lucide-react"
+import ActivityDetails from './components/ActivityDetails'
 
 function App() {
   const auth = useAuth()
   const [showRegister, setShowRegister] = useState(false)
+  const [currentPath, setCurrentPath] = useState(window.location.pathname)
+
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname)
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  function navigate(path: string, replace = false) {
+    if (replace) {
+      window.history.replaceState({}, '', path)
+    } else {
+      window.history.pushState({}, '', path)
+    }
+    setCurrentPath(path)
+  }
   
   
   return (
@@ -54,7 +71,17 @@ function App() {
       </header>
 
       {auth.isAuthenticated ? (
-        <Activities />
+        /^\/activities\/[^/]+\/?$/.test(currentPath) ? (
+          <ActivityDetails
+            activityId={decodeURIComponent(currentPath.split('/')[2])}
+            onBack={() => navigate('/activities')}
+            onDeleted={() => navigate('/activities')}
+          />
+        ) : currentPath === '/activities' || currentPath === '/' ? (
+          <Activities onViewDetails={(id) => navigate(`/activities/${encodeURIComponent(id)}`)} />
+        ) : (
+          <section className="activities"><h1>Page not found</h1><button type="button" onClick={() => navigate('/activities')}>Back to Activities</button></section>
+        )
         ) : (
           showRegister ? (
             <>
@@ -71,7 +98,7 @@ function App() {
                   </p>
                 </div>
 
-                <RegisterForm />
+                <RegisterForm onAuthenticated={() => navigate('/activities', true)} />
 
                 <div className="auth-footer">
                   <p>Already have an account?</p>
@@ -97,7 +124,7 @@ function App() {
                 <p>Log in to manage your daily activities.</p>
               </div>
 
-              <LoginForm />
+              <LoginForm onAuthenticated={() => navigate('/activities', true)} />
 
               <div className="auth-footer">
                 <p>Don't have an account?</p>
@@ -118,7 +145,8 @@ function App() {
 
   function handleLogout() {
     if (window.confirm("Are you sure you want to logout")) {
-      auth.logout()
+      navigate('/activities', true)
+      void auth.logout()
       setShowRegister(false)
     }
   }

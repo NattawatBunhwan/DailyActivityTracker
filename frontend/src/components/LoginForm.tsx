@@ -3,7 +3,7 @@ import { login } from "../api/authApi"
 import useAuth from "../hooks/useAuth"
 import './LoginForm.css'
 
-function LoginForm() {
+function LoginForm({ onAuthenticated }: { onAuthenticated: () => void }) {
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
@@ -70,6 +70,7 @@ function LoginForm() {
             auth.setToken(loginData.token)
             auth.setExpiresAt(loginData.expiresAt)
             auth.setRefreshToken(loginData.refreshToken)
+            onAuthenticated()
         } catch (error) {
             setError(
                 error instanceof Error ? error.message : 'Unable to connect to the server'

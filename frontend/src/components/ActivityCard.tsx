@@ -1,16 +1,19 @@
 import type React from "react"
 import type { Activity } from "../types/activity"
 import { getStatusLabel, getPriorityLabel } from "../utils/activity"
+import { Eye, Pencil, Trash2, CalendarDays } from "lucide-react"
+import "./ActivityCard.css"
 
 type ActivityCardProps = {
     activity: Activity
     onEdit: (activityId: string) => void
     onEditButtonClick: (button: HTMLButtonElement, activityId: string) => void
     onDelete: (button: HTMLButtonElement, activityId: string) => void
+    onViewDetails: (activityId: string) => void
     isDeleting: boolean
 }
 
-function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeleting }: ActivityCardProps) { 
+function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, onViewDetails, isDeleting }: ActivityCardProps) {
     return (
         <article className="activity-card">
             <div className="activity-card-content">
@@ -20,11 +23,9 @@ function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeletin
                             {activity.title}
                         </h3>
 
-                        {activity.description && (
-                            <p className="activity-card-description">
-                                {activity.description}
-                            </p>
-                        )}
+                        <p className="activity-card-description">
+                            {activity.description?.trim() || "No description provided."}
+                        </p>
                     </div>
 
                     <span
@@ -45,16 +46,19 @@ function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeletin
                     </span>
 
                     <time className="activity-card-date">
-                        Activity date:{" "}
-                        {new Date(activity.activityDate).toLocaleDateString(
-                            "en-GB",
-                            {
-                                day: "2-digit",
-                                month: "short",
-                                year: "numeric",
-                                timeZone: "UTC",
-                            }
-                        )}
+                        <CalendarDays size={14} aria-hidden="true" />
+                        <span>
+                            Activity date:{" "}
+                            {new Date(activity.activityDate).toLocaleDateString(
+                                "en-GB",
+                                {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                    timeZone: "UTC",
+                                }
+                            )}
+                        </span>
                     </time>
                 </div>
             </div>
@@ -63,7 +67,17 @@ function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeletin
                 <div className="activity-card-actions">
                     <button
                         type="button"
+                        className="activity-view-button"
+                        aria-label={`View details for ${activity.title}`}
+                        title="View details"
+                        onClick={() => onViewDetails(activity.id)}
+                    ><Eye size={17} aria-hidden="true" /></button>
+
+                    <button
+                        type="button"
                         className="activity-edit-button"
+                        aria-label={`Edit ${activity.title}`}
+                        title="Edit activity"
                         data-activity-id={activity.id}
                         data-action="edit"
                         onClick={(event: React.MouseEvent<HTMLButtonElement>) => {
@@ -71,7 +85,7 @@ function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeletin
                             onEdit(activity.id);
                         }}
                     >
-                        Edit
+                        <Pencil size={17} aria-hidden="true" />
                     </button>
 
                     <button
@@ -83,7 +97,7 @@ function ActivityCard({ activity, onEdit, onEditButtonClick, onDelete, isDeletin
                         }
                         disabled={isDeleting}
                     >
-                        {isDeleting ? "Deleting..." : "Delete"}
+                        <Trash2 size={17} aria-hidden="true" />
                     </button>
                 </div>
             </div>

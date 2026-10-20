@@ -26,15 +26,20 @@ function AuthProvider({ children }: AuthProviderProps) {
     const [expiresAt, setExpiresAt] = useState('')
 
     async function logout() {
+        const activeToken = token
+        const activeRefreshToken = refreshToken
+
+        // Clear the local session immediately so protected content unmounts
+        // without waiting for the server logout request to complete.
+        setIsAuthenticated(false)
+        setToken('')
+        setExpiresAt('')
+        setRefreshToken('')
+
         try {
-            await logoutFromServer(token, refreshToken)
+            await logoutFromServer(activeToken, activeRefreshToken)
         } catch (error) {
-            console.error('Logout failed:',error)
-        } finally {
-            setIsAuthenticated(false)
-            setToken('')
-            setExpiresAt('')
-            setRefreshToken('')
+            console.error('Logout failed:', error)
         }
     }
 

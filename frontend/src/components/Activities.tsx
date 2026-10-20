@@ -15,7 +15,7 @@ import { Layers, Clock3, RefreshCw, CircleCheck } from "lucide-react"
 import { SearchField, Pagination } from "@heroui/react";
 import { getPriorityLabel, getStatusLabel } from "../utils/activity";
 
-function Activities() {
+function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => void }) {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
     const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null)
@@ -557,7 +557,7 @@ function Activities() {
                 >
                     <SearchField.Group>
                         <SearchField.SearchIcon />
-                        <SearchField.Input placeholder="Search activities..." />
+                        <SearchField.Input aria-label="Search activities" placeholder="Search activities..." />
                         <SearchField.ClearButton />
                     </SearchField.Group>
                 </SearchField>
@@ -611,6 +611,7 @@ function Activities() {
                     onEdit={handleEditActivity}
                     onEditButtonClick={handleEditButtonClick}
                     onDelete={handleDeleteActivity}
+                    onViewDetails={onViewDetails}
                     isDeleting={isDeleting}
                 />
             )}
