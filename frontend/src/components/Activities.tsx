@@ -12,6 +12,8 @@ import CreateActivityForm from "./CreateActivityForm";
 import "./Activities.css"
 import CreatedActivityForm from "./CreatedActivityForm";
 import { Layers, Clock3, RefreshCw, CircleCheck } from "lucide-react"
+import { SearchField, Pagination } from "@heroui/react";
+import { getPriorityLabel, getStatusLabel } from "../utils/activity";
 
 function Activities() {
     const auth = useAuth()
@@ -25,6 +27,8 @@ function Activities() {
     const [page, setPage] = useState<number>(1)
     const [statusFilter, setStatusFilter] = useState<ActivityStatus | "">("")
     const [priorityFilter, setPriorityFilter] = useState<ActivityPriority | "">("")
+    const [availableStatuses, setAvailableStatuses] = useState<ActivityStatus[]>([])
+    const [availablePriorities, setAvailablePriorities] = useState<ActivityPriority[]>([])
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
     const [sortBy, setSortBy] = useState("createdat")
@@ -124,13 +128,21 @@ function Activities() {
     }, [isCreateModalOpen])
 
     async function loadActivities(token: string, page: number) {
+        if (!token) {
+            setActivitiesError("Authentication required.")
+            setActivities([])
+            setAvailableStatuses([])
+            setAvailablePriorities([])
+            setTotalPages(0)
+            setHasLoadedActivities(true)
+            setIsLoadingActivities(false)
+            return
+        }
+
         setActivitiesError(null)
         setIsLoadingActivities(true)
 
         try {
-            if (!token) {
-                setActivitiesError("Authentication required.")
-            }
             const data = await getActivities(token, {
                 page,
                 pageSize: 10,
@@ -140,8 +152,10 @@ function Activities() {
                 ...(sortBy && { sortBy, descending}),
             })
 
-            setActivities(data.items)
-            setTotalPages(data.totalPages)
+            setActivities(data.activities.items)
+            setTotalPages(data.activities.totalPages)
+            setAvailableStatuses(data.availableStatuses)
+            setAvailablePriorities(data.availablePriorities)
             setHasLoadedActivities(true)
             
         } catch {
@@ -275,7 +289,38 @@ function Activities() {
         editButtonRef.current = button
         editActivityIdRef.current = activityId
     }
-    
+
+    const paginationItems: (
+        | number
+        | "start-ellipsis"
+        | "end-ellipsis"
+    )[] = [];
+
+    if (totalPages <= 7) {
+        for (let p = 1; p <= totalPages; p++) {
+            paginationItems.push(p);
+        }
+    } else {
+        const start = Math.max(2, Math.min(page - 2, totalPages - 3));
+        const end = Math.min(totalPages - 1, start + 4);
+
+        paginationItems.push(1);
+
+        if (start > 2) {
+            paginationItems.push("start-ellipsis");
+        }
+
+        for (let p = start; p <= end; p++) {
+            paginationItems.push(p);
+        }
+
+        if (end < totalPages - 1) {
+            paginationItems.push("end-ellipsis");
+        }
+
+        paginationItems.push(totalPages);
+    }
+
     return (
         <section className="activities">
             <header className="activities-page-header">
@@ -392,14 +437,17 @@ function Activities() {
                 <p role="alert">{summaryError}</p>
             )}
 
+            
             {isFiltersOpen && (
                 <div className="activities-filters" id="activity-filters">
-                    <label>
-                        Status
+                    <div className="activity-filter-field">
+                        <label htmlFor="activity-status-filter">Status</label>
                         <select
+                            id="activity-status-filter"
                             value={statusFilter}
                             onChange={(event) => {
                                 const value = event.target.value
+
                                 setStatusFilter(
                                     value === "" ? "" : Number(value) as ActivityStatus
                                 )
@@ -407,19 +455,22 @@ function Activities() {
                             }}
                         >
                             <option value="">All statuses</option>
-                            <option value={1}>Pending</option>
-                            <option value={2}>In Progress</option>
-                            <option value={3}>Completed</option>
-                            <option value={4}>Cancelled</option>
+                            {availableStatuses.map((status) => (
+                                <option key={status} value={status}>
+                                    {getStatusLabel(status)}
+                                </option>
+                            ))}
                         </select>
-                    </label>
+                    </div>
 
-                    <label>
-                        Priority
+                    <div className="activity-filter-field">
+                        <label htmlFor="activity-priority-filter">Priority</label>
                         <select
+                            id="activity-priority-filter"
                             value={priorityFilter}
                             onChange={(event) => {
                                 const value = event.target.value
+
                                 setPriorityFilter(
                                     value === "" ? "" : Number(value) as ActivityPriority
                                 )
@@ -427,25 +478,14 @@ function Activities() {
                             }}
                         >
                             <option value="">All priorities</option>
-                            <option value={1}>Low</option>
-                            <option value={2}>Medium</option>
-                            <option value={3}>High</option>
+                            {availablePriorities.map((priority) => (
+                                <option key={priority} value={priority}>
+                                    {getPriorityLabel(priority)}
+                                </option>
+                            ))}
                         </select>
-                    </label>
+                    </div>
 
-                    <label>
-                        Search activities
-                        <input
-                            type="search"
-                            value={search}
-                            placeholder="Search by title..."
-                            onChange={(event) => {
-                                setSearch(event.target.value)
-                                setPage(1)
-                            }}
-                        />
-                    </label>
-                    
                     <label>
                         Sort by
                         <select
@@ -476,8 +516,24 @@ function Activities() {
                             <option value="asc">Ascending</option>
                         </select>
                     </label>
+
+                    <div className="activity-filter-actions">
+                        <button
+                            type="button"
+                            className="filter-clear-button"
+                            onClick={() => {
+                                setStatusFilter("")
+                                setPriorityFilter("")
+                                setPage(1)
+                            }}
+                            disabled={statusFilter === "" && priorityFilter === ""}
+                        >
+                            Clear Filters
+                        </button>
+                    </div>
                 </div>
             )}
+
 
             {activitiesError && (
                 <>
@@ -487,9 +543,24 @@ function Activities() {
                     </button>
                 </>
             )}
-    
+      
             <header className="activity-list-header">
                 <h2>Activity List</h2>
+
+                <SearchField
+                    name="search"
+                    value={search}
+                    onChange={(value) => {
+                        setSearch(value)
+                        setPage(1)
+                    }}
+                >
+                    <SearchField.Group>
+                        <SearchField.SearchIcon />
+                        <SearchField.Input placeholder="Search activities..." />
+                        <SearchField.ClearButton />
+                    </SearchField.Group>
+                </SearchField>
 
                 <button
                     type="button"
@@ -610,15 +681,51 @@ function Activities() {
                 </p>
             </DeleteModal>
             
-            <div className="pagination">
-                <button onClick={() => setPage(prevPage => prevPage - 1)} disabled={page <= 1 || isLoadingActivities}>
-                    Previous
-                </button>
+            <Pagination className="activity-pagination">
+                <Pagination.Content>
+                    <Pagination.Item>
+                        <Pagination.Previous
+                            isDisabled={page === 1 || isLoadingActivities}
+                            onPress={() => setPage((p) => p - 1)}
+                        >
+                            <Pagination.PreviousIcon />
+                            <span>Previous</span>
+                        </Pagination.Previous>
+                    </Pagination.Item>
 
-                <button onClick={() => setPage(prevPage => prevPage + 1)} disabled={page >= totalPages || isLoadingActivities}>
-                    Next
-                </button>
-            </div>   
+                    {paginationItems.map((item) =>
+                        typeof item === "number" ? (
+                            <Pagination.Item key={item}>
+                                <Pagination.Link
+                                    isActive={item === page}
+                                    isDisabled={isLoadingActivities}
+                                    onPress={() => setPage(item)}
+                                >
+                                    {item}
+                                </Pagination.Link>
+                            </Pagination.Item>
+                        ) : (
+                            <Pagination.Item key={item}>
+                                <span className="pagination-ellipsis" aria-hidden="true">
+                                    …
+                                </span>
+                            </Pagination.Item>
+                        )
+                    )}
+
+                    <Pagination.Item>
+                        <Pagination.Next
+                            isDisabled={
+                                page === totalPages || isLoadingActivities
+                            }
+                            onPress={() => setPage((p) => p + 1)}
+                        >
+                            <span>Next</span>
+                            <Pagination.NextIcon />
+                        </Pagination.Next>
+                    </Pagination.Item>
+                </Pagination.Content>
+            </Pagination>
         </section>
     )
 }

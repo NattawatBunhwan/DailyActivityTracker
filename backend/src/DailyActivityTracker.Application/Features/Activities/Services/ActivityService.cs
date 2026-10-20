@@ -41,19 +41,29 @@ public class ActivityService : IActivityService
         return MapToResponse(activity);
     }
 
-    public async Task<PagedResponse<ActivityResponse>> GetAllAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    public async Task<ActivitiesListResponse> GetAllAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
         var activities = await _activityRepository.GetAllByUserIdAsync(userId, query, cancellationToken);
 
         var totalCount = await _activityRepository.CountByUserIdAsync(userId, query, cancellationToken);
 
-        return new PagedResponse<ActivityResponse>
+        var availableStatuses = await _activityRepository.GetAvailableStatusesByUserIdAsync(userId, query, cancellationToken);
+
+        var availablePriorities = await _activityRepository.GetAvailablePrioritiesByUserIdAsync(userId, query, cancellationToken);
+
+        return new ActivitiesListResponse
         {
-            Items = activities.Select(MapToResponse).ToList(),
-            Page = query.Page,
-            PageSize = query.PageSize,
-            TotalCount = totalCount,
-            TotalPages = (int)Math.Ceiling((double)totalCount / query.PageSize)
+            Activities = new PagedResponse<ActivityResponse>
+            {
+                Items = activities.Select(MapToResponse).ToList(),
+                Page = query.Page,
+                PageSize = query.PageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(
+                    (double)totalCount / query.PageSize)
+            },
+            AvailableStatuses = availableStatuses,
+            AvailablePriorities = availablePriorities
         };
     }
 

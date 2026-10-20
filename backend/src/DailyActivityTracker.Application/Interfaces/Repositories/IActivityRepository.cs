@@ -1,5 +1,6 @@
 using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Domain.Entities;
+using DailyActivityTracker.Domain.Enums;
 
 namespace DailyActivityTracker.Application.Interfaces.Repositories;
 
@@ -14,6 +15,10 @@ public interface IActivityRepository
     Task<List<Activity>> GetAllAsync(CancellationToken cancellationToken = default);
 
     Task<int> CountByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
+
+    Task<List<ActivityStatus>> GetAvailableStatusesByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
+
+    Task<List<ActivityPriority>> GetAvailablePrioritiesByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default);
 
     Task<ActivitySummaryResponse> GetSummaryByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 

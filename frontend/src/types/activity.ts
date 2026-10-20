@@ -35,12 +35,18 @@ export type UpdateActivityRequest = {
     priority: ActivityPriority
 }
 
-export type ActivitiesResponse = {
+export type PagedResponse<T> = {
     page: number
     pageSize: number
     totalCount: number
     totalPages: number
-    items: Activity[]
+    items: T[]
+}
+
+export type ActivitiesResponse = {
+    activities: PagedResponse<Activity>
+    availableStatuses: ActivityStatus[]
+    availablePriorities: ActivityPriority[]
 }
 
 export type ActivityQuery = {

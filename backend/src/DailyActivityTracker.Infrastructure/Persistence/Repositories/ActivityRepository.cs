@@ -43,6 +43,67 @@ public class ActivityRepository : IActivityRepository
         return ApplyFilters(userId, query).CountAsync(cancellationToken);
     }
 
+
+    public Task<List<ActivityStatus>> GetAvailableStatusesByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    {
+        var activities = _dbContext.Activities
+            .Where(activity => activity.UserId == userId);
+
+        // กรองด้วย Priority แต่ไม่กรองด้วย Status
+        if (query.Priority.HasValue)
+        {
+            activities = activities.Where(
+                activity => activity.Priority == query.Priority.Value);
+        }
+
+        // ใช้ Search เหมือนกับรายการกิจกรรม
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            activities = activities.Where(activity =>
+                EF.Functions.ILike(activity.Title, $"%{query.Search}%") ||
+                (activity.Description != null &&
+                 EF.Functions.ILike(
+                     activity.Description,
+                     $"%{query.Search}%")));
+        }
+
+        return activities
+            .Select(activity => activity.Status)
+            .Distinct()
+            .OrderBy(status => status)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<List<ActivityPriority>> GetAvailablePrioritiesByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    {
+        var activities = _dbContext.Activities
+            .Where(activity => activity.UserId == userId);
+
+        // กรองด้วย Status แต่ไม่กรองด้วย Priority
+        if (query.Status.HasValue)
+        {
+            activities = activities.Where(
+                activity => activity.Status == query.Status.Value);
+        }
+
+        // ใช้ Search เหมือนกับรายการกิจกรรม
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            activities = activities.Where(activity =>
+                EF.Functions.ILike(activity.Title, $"%{query.Search}%") ||
+                (activity.Description != null &&
+                 EF.Functions.ILike(
+                     activity.Description,
+                     $"%{query.Search}%")));
+        }
+
+        return activities
+            .Select(activity => activity.Priority)
+            .Distinct()
+            .OrderBy(priority => priority)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<ActivitySummaryResponse> GetSummaryByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
     {
         var activities = _dbContext.Activities.Where(activity => activity.UserId == userId);
