@@ -11,9 +11,10 @@ import CreateModal from "./CreateModal";
 import CreateActivityForm from "./CreateActivityForm";
 import "./Activities.css"
 import CreatedActivityForm from "./CreatedActivityForm";
-import { Layers, Clock3, RefreshCw, CircleCheck } from "lucide-react"
+import { Layers, Clock3, RefreshCw, CircleCheck, CircleX, ChevronDown, ChevronUp, Filter, SlidersHorizontal } from "lucide-react"
 import { SearchField, Pagination } from "@heroui/react";
 import { getPriorityLabel, getStatusLabel } from "../utils/activity";
+import type { ReactNode } from "react"
 
 function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => void }) {
     const auth = useAuth()
@@ -58,6 +59,65 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     const pendingEditFocusRef = useRef(false)
     const createTriggerRef = useRef<HTMLButtonElement | null>(null)
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+    const [isCancelledSummaryExpanded, setIsCancelledSummaryExpanded] = useState(false)
+
+    const summaryCards: {
+        title: string
+        count: number
+        className: string
+        status: ActivityStatus | ""
+        icon: ReactNode
+    }[] = [
+        { title: "Total Activities", count: activitySummary?.totalActivities ?? 0, className: "summary-total", status: "", icon: <Layers size={20} aria-hidden="true" /> },
+        { title: "Pending", count: activitySummary?.pendingCount ?? 0, className: "summary-pending", status: 1, icon: <Clock3 size={20} aria-hidden="true" /> },
+        { title: "In Progress", count: activitySummary?.inProgressCount ?? 0, className: "summary-in-progress", status: 2, icon: <RefreshCw size={20} aria-hidden="true" /> },
+        { title: "Completed", count: activitySummary?.completedCount ?? 0, className: "summary-completed", status: 3, icon: <CircleCheck size={20} aria-hidden="true" /> },
+    ]
+
+    const cancelledSummaryCard = {
+        title: "Cancelled",
+        count: activitySummary?.cancelledCount ?? 0,
+        className: "summary-cancelled",
+        status: 4 as ActivityStatus,
+        icon: <CircleX size={20} aria-hidden="true" />,
+    }
+
+    function selectSummaryStatus(status: ActivityStatus | "") {
+        setStatusFilter((currentStatus) =>
+            status !== "" && currentStatus === status ? "" : status,
+        )
+    }
+
+    function renderSummaryCard(card: (typeof summaryCards)[number] | typeof cancelledSummaryCard) {
+        const isSelected = statusFilter === card.status
+
+        return (
+            <button
+                key={card.title}
+                type="button"
+                className={`summary-card ${card.className}${isSelected ? " is-selected" : ""}`}
+                aria-pressed={isSelected}
+                onClick={() => selectSummaryStatus(card.status)}
+            >
+                <span className="summary-card-heading">
+                    <span className="summary-icon">{card.icon}</span>
+                    <span className="summary-card-label" role="heading" aria-level={3}>{card.title}</span>
+                </span>
+
+                {isLoadingSummary && activitySummary === null ? (
+                    <span className="summary-value" role="status">Loading...</span>
+                ) : summaryError ? (
+                    <span className="summary-value" role="alert">{summaryError}</span>
+                ) : (
+                    <span className="summary-value">{card.count}</span>
+                )}
+
+                <span className="summary-selection-slot" aria-hidden={!isSelected}>
+                    {isSelected && <><CircleCheck size={15} aria-hidden="true" /><span>Selected</span></>}
+                </span>
+            </button>
+        )
+    }
     
     useEffect(() => {
         setPage(1)
@@ -172,9 +232,15 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
         setIsLoadingSummary(true)
 
         try {
-            const data = await getActivitySummary(token)
+            const [data, cancelledActivities] = await Promise.all([
+                getActivitySummary(token),
+                getActivities(token, { page: 1, pageSize: 1, status: 4 }),
+            ])
 
-            setActivitySummary(data)
+            setActivitySummary({
+                ...data,
+                cancelledCount: cancelledActivities.activities.totalCount,
+            })
         } catch {
             setActivitiesError("Failed to load activity summary.")
         } finally {
@@ -356,80 +422,33 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
             </header>
 
             <div className="activity-summary">
-                <div className="summary-card summary-total">
-                    <div className="summary-card-heading">
-                        <span className="summary-icon">
-                            <Layers size={20} aria-hidden="true" />
-                        </span>
-                        <h3>Total Activities</h3>
-                    </div>
-
-                    {isLoadingSummary && activitySummary === null ? (
-                        <p role="status">Loading...</p>
-                    ) : summaryError ? (
-                        <p role="alert">{summaryError}</p>
-                    ) : (
-                        <p className="summary-value">
-                            {activitySummary?.totalActivities ?? 0}
-                        </p>
-                    )}
+                <div className="summary-primary-grid">
+                    {summaryCards.map(renderSummaryCard)}
                 </div>
 
-                <div className="summary-card summary-pending">
-                    <div className="summary-card-heading">
-                        <span className="summary-icon">
-                            <Clock3 size={20} aria-hidden="true" />
-                        </span>
-                        <h3>Pending</h3>
-                    </div>
+                <button
+                    type="button"
+                    className="summary-expand-toggle"
+                    aria-label={isCancelledSummaryExpanded ? "Hide Cancelled summary" : "Show Cancelled summary"}
+                    aria-expanded={isCancelledSummaryExpanded}
+                    aria-controls="cancelled-summary-row"
+                    title={isCancelledSummaryExpanded ? "Hide Cancelled summary" : "Show Cancelled summary"}
+                    onClick={() => {
+                        if (isCancelledSummaryExpanded && statusFilter === 4) {
+                            setStatusFilter("")
+                        }
+                        setIsCancelledSummaryExpanded((expanded) => !expanded)
+                    }}
+                >
+                    {isCancelledSummaryExpanded ? <ChevronUp size={18} aria-hidden="true" /> : <ChevronDown size={18} aria-hidden="true" />}
+                </button>
 
-                    {isLoadingSummary && activitySummary === null ? (
-                        <p role="status">Loading...</p>
-                    ) : summaryError ? (
-                        <p role="alert">{summaryError}</p>
-                    ) : (
-                        <p className="summary-value">
-                            {activitySummary?.pendingCount ?? 0}
-                        </p>
-                    )}
-                </div>
-
-                <div className="summary-card summary-in-progress">
-                    <div className="summary-card-heading">
-                        <span className="summary-icon">
-                            <RefreshCw size={20} aria-hidden="true"/>
-                        </span>
-                        <h3>In Progress</h3>
-                    </div>
-
-                    {isLoadingSummary && activitySummary === null ? (
-                        <p role="status">Loading...</p>
-                    ) : summaryError ? (
-                        <p role="alert">{summaryError}</p>
-                    ) : (
-                        <p className="summary-value">
-                            {activitySummary?.inProgressCount ?? 0}
-                        </p>
-                    )}
-                </div>
-
-                <div className="summary-card summary-completed">
-                    <div className="summary-card-heading">
-                        <span className="summary-icon">
-                            <CircleCheck size={20} aria-hidden="true"/>
-                        </span>
-                        <h3>Completed</h3>
-                    </div>
-
-                    {isLoadingSummary && activitySummary === null ? (
-                        <p role="status">Loading...</p>
-                    ) : summaryError ? (
-                        <p role="alert">{summaryError}</p>
-                    ) : (
-                        <p className="summary-value">
-                            {activitySummary?.completedCount ?? 0}
-                        </p>
-                    )}
+                <div
+                    id="cancelled-summary-row"
+                    className="summary-cancelled-grid"
+                    hidden={!isCancelledSummaryExpanded}
+                >
+                    {renderSummaryCard(cancelledSummaryCard)}
                 </div>
             </div>
 
@@ -447,10 +466,12 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                             value={statusFilter}
                             onChange={(event) => {
                                 const value = event.target.value
+                                const nextStatus = value === "" ? "" : Number(value) as ActivityStatus
 
-                                setStatusFilter(
-                                    value === "" ? "" : Number(value) as ActivityStatus
-                                )
+                                setStatusFilter(nextStatus)
+                                if (nextStatus === 4) {
+                                    setIsCancelledSummaryExpanded(true)
+                                }
                                 setPage(1)
                             }}
                         >
@@ -545,7 +566,19 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
             )}
       
             <header className="activity-list-header">
-                <h2>Activity List</h2>
+                <div className="activity-list-heading-group">
+                    <h2>Activities List</h2>
+                    <p className="activity-list-context">
+                        <Filter size={14} aria-hidden="true" />
+                        <span>
+                            {statusFilter === ""
+                                ? search.trim() || priorityFilter !== ""
+                                    ? "Showing activities matching the active filters"
+                                    : "Showing all activities"
+                                : `Showing activities with status: ${getStatusLabel(statusFilter)}`}
+                        </span>
+                    </p>
+                </div>
 
                 <SearchField
                     name="search"
@@ -570,21 +603,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                     aria-controls="activity-filters"
                     onClick={() => setIsFiltersOpen((open) => !open)}
                 >
-                    <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        aria-hidden="true"
-                    >
-                        <path d="M4 7h16" />
-                        <path d="M7 12h10" />
-                        <path d="M10 17h4" />
-                    </svg>
+                    <SlidersHorizontal size={20} aria-hidden="true" />
                 </button>
             </header>
 

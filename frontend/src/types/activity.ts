@@ -66,4 +66,5 @@ export type ActivitySummary = {
     pendingCount: number
     inProgressCount: number
     completedCount: number
+    cancelledCount?: number
 }
