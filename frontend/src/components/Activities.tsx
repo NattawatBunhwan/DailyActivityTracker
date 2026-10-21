@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { Activity, ActivityStatus, ActivityPriority, ActivitySummary } from "../types/activity";
 import ActivityList from "./ActivityList";
 import { deleteActivity, getActivities, getActivityById, getActivitySummary } from "../api/activityApi";
@@ -14,6 +14,203 @@ import CreatedActivityForm from "./CreatedActivityForm";
 import { Layers, Clock3, RefreshCw, CircleCheck, CircleX, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search, X, Filter, SlidersHorizontal } from "lucide-react"
 import { getPriorityLabel, getStatusLabel } from "../utils/activity";
 import type { ReactNode } from "react"
+
+type SearchableFilterOption = {
+    value: string
+    label: string
+}
+
+function SearchableFilterDropdown({
+    id,
+    label,
+    placeholder,
+    value,
+    valueLabel,
+    options,
+    onChange,
+    searchable = false,
+    openDropdownId,
+    setOpenDropdownId,
+}: {
+    id: string
+    label: string
+    placeholder?: string
+    value: string
+    valueLabel?: string
+    options: SearchableFilterOption[]
+    onChange: (value: string) => void
+    searchable?: boolean
+    openDropdownId: string | null
+    setOpenDropdownId: (id: string | null) => void
+}) {
+    const isOpen = openDropdownId === id
+    const [query, setQuery] = useState("")
+    const [opensAbove, setOpensAbove] = useState(false)
+    const [optionsMaxHeight, setOptionsMaxHeight] = useState(190)
+    const fieldRef = useRef<HTMLDivElement | null>(null)
+    const triggerRef = useRef<HTMLButtonElement | null>(null)
+    const searchRef = useRef<HTMLInputElement | null>(null)
+    const firstOptionRef = useRef<HTMLButtonElement | null>(null)
+    const listboxId = `${id}-options`
+    const selectedOption = options.find((option) => option.value === value)
+    const displayedValue = selectedOption?.label ?? (value ? valueLabel : undefined) ?? placeholder ?? ""
+    const normalizedQuery = query.trim().toLocaleLowerCase()
+    const visibleOptions = options.filter((option) =>
+        option.label.toLocaleLowerCase().includes(normalizedQuery),
+    )
+    const visibleOptionCount = visibleOptions.length
+
+    const updatePlacement = useCallback(() => {
+        const trigger = triggerRef.current
+        if (!trigger) return
+
+        const bounds = trigger.getBoundingClientRect()
+        const spaceAbove = Math.max(0, bounds.top - 8)
+        const spaceBelow = Math.max(0, window.innerHeight - bounds.bottom - 8)
+        const optionRowsHeight = Math.min(190, Math.max(36, visibleOptionCount * 36))
+        const estimatedPanelHeight = 64 + optionRowsHeight
+        const shouldOpenAbove = spaceBelow < estimatedPanelHeight && spaceAbove > spaceBelow
+        const availableSpace = shouldOpenAbove ? spaceAbove : spaceBelow
+
+        setOpensAbove(shouldOpenAbove)
+        setOptionsMaxHeight(Math.max(40, Math.min(190, availableSpace - 64)))
+    }, [visibleOptionCount])
+
+    useEffect(() => {
+        if (!isOpen) return
+
+        if (searchable) {
+            searchRef.current?.focus()
+        } else {
+            firstOptionRef.current?.focus()
+        }
+
+        function handleViewportChange() {
+            updatePlacement()
+        }
+
+        function handlePointerDown(event: PointerEvent) {
+            if (event.target instanceof Node && !fieldRef.current?.contains(event.target)) {
+                setOpenDropdownId(null)
+                setQuery("")
+            }
+        }
+
+        function handleKeyDown(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setOpenDropdownId(null)
+                setQuery("")
+                triggerRef.current?.focus()
+            }
+        }
+
+        document.addEventListener("pointerdown", handlePointerDown)
+        document.addEventListener("keydown", handleKeyDown)
+        window.addEventListener("resize", handleViewportChange)
+        window.addEventListener("scroll", handleViewportChange, true)
+
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown)
+            document.removeEventListener("keydown", handleKeyDown)
+            window.removeEventListener("resize", handleViewportChange)
+            window.removeEventListener("scroll", handleViewportChange, true)
+        }
+    }, [isOpen, searchable, setOpenDropdownId, updatePlacement])
+
+    function selectOption(nextValue: string) {
+        onChange(placeholder && value === nextValue ? "" : nextValue)
+        setOpenDropdownId(null)
+        setQuery("")
+        triggerRef.current?.focus()
+    }
+
+    return (
+        <div className={`activity-filter-field searchable-filter-field${isOpen ? " is-open" : ""}`} ref={fieldRef}>
+            <label id={`${id}-label`} htmlFor={id}>{label}</label>
+            <button
+                ref={triggerRef}
+                id={id}
+                type="button"
+                className="searchable-filter-trigger"
+                aria-labelledby={`${id}-label ${id}-value`}
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
+                aria-controls={isOpen ? listboxId : undefined}
+                onClick={() => {
+                    if (isOpen) {
+                        setOpenDropdownId(null)
+                        setQuery("")
+                    } else {
+                        setQuery("")
+                        updatePlacement()
+                        setOpenDropdownId(id)
+                    }
+                }}
+            >
+                <span
+                    id={`${id}-value`}
+                    className={`searchable-filter-value${!value && placeholder ? " is-placeholder" : ""}`}
+                >
+                    {displayedValue}
+                </span>
+                <ChevronDown size={16} aria-hidden="true" />
+            </button>
+
+            {isOpen && (
+                <div className={`searchable-filter-panel${opensAbove ? " is-above" : ""}`}>
+                    {searchable && (
+                        <div className="searchable-filter-search">
+                            <Search size={15} aria-hidden="true" />
+                            <input
+                                ref={searchRef}
+                                type="search"
+                                value={query}
+                                aria-label={`Search ${label.toLowerCase()} options`}
+                                placeholder={`Search ${label.toLowerCase()}...`}
+                                onChange={(event) => setQuery(event.target.value)}
+                                onKeyDown={(event) => {
+                                    if (event.key === "Escape") {
+                                        event.preventDefault()
+                                    }
+                                }}
+                            />
+                        </div>
+                    )}
+                    <div
+                        id={listboxId}
+                        className="searchable-filter-options"
+                        role="listbox"
+                        aria-labelledby={`${id}-label`}
+                        style={{ maxHeight: `${optionsMaxHeight}px` }}
+                    >
+                        {visibleOptions.map((option, index) => (
+                            <button
+                                key={option.value}
+                                ref={index === 0 ? firstOptionRef : undefined}
+                                type="button"
+                                className="searchable-filter-option"
+                                role="option"
+                                aria-selected={value === option.value}
+                                aria-label={value === option.value && placeholder
+                                    ? `${option.label}, selected. Activate to clear this filter.`
+                                    : option.label}
+                                onClick={() => selectOption(option.value)}
+                            >
+                                {option.label}
+                            </button>
+                        ))}
+                        {options.length === 0 && (
+                            <p className="searchable-filter-empty" role="status">No {label.toLowerCase()} options available.</p>
+                        )}
+                        {options.length > 0 && visibleOptions.length === 0 && (
+                            <p className="searchable-filter-empty" role="status">No matching {label.toLowerCase()} options.</p>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    )
+}
 
 function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => void }) {
     const auth = useAuth()
@@ -32,6 +229,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
     const searchInputRef = useRef<HTMLInputElement | null>(null)
+    const activitiesRequestIdRef = useRef(0)
     const [sortBy, setSortBy] = useState("createdat")
     const [descending, setDescending] = useState(true)
     const [totalPages, setTotalPages] = useState<number>(0)
@@ -59,6 +257,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     const pendingEditFocusRef = useRef(false)
     const createTriggerRef = useRef<HTMLButtonElement | null>(null)
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
+    const [openFilterDropdownId, setOpenFilterDropdownId] = useState<string | null>(null)
     const [isCancelledSummaryExpanded, setIsCancelledSummaryExpanded] = useState(false)
 
     const summaryCards: {
@@ -188,6 +387,8 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     }, [isCreateModalOpen])
 
     async function loadActivities(token: string, page: number) {
+        const requestId = ++activitiesRequestIdRef.current
+
         if (!token) {
             setActivitiesError("Authentication required.")
             setActivities([])
@@ -212,6 +413,15 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                 ...(sortBy && { sortBy, descending}),
             })
 
+            if (requestId !== activitiesRequestIdRef.current) return
+
+            if (statusFilter !== "" && !data.availableStatuses.includes(statusFilter)) {
+                setStatusFilter("")
+            }
+            if (priorityFilter !== "" && !data.availablePriorities.includes(priorityFilter)) {
+                setPriorityFilter("")
+            }
+
             setActivities(data.activities.items)
             setTotalPages(data.activities.totalPages)
             setAvailableStatuses(data.availableStatuses)
@@ -219,9 +429,13 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
             setHasLoadedActivities(true)
             
         } catch {
-            setActivitiesError("Failed to load activities.")
+            if (requestId === activitiesRequestIdRef.current) {
+                setActivitiesError("Failed to load activities.")
+            }
         } finally {
-            setIsLoadingActivities(false)
+            if (requestId === activitiesRequestIdRef.current) {
+                setIsLoadingActivities(false)
+            }
         }        
     }
 
@@ -459,84 +673,84 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
             
             {isFiltersOpen && (
                 <div className="activities-filters" id="activity-filters">
-                    <div className="activity-filter-field">
-                        <label htmlFor="activity-status-filter">Status</label>
-                        <select
-                            id="activity-status-filter"
-                            value={statusFilter}
-                            onChange={(event) => {
-                                const value = event.target.value
-                                const nextStatus = value === "" ? "" : Number(value) as ActivityStatus
+                    <SearchableFilterDropdown
+                        id="activity-status-filter"
+                        label="Status"
+                        placeholder="Select status"
+                        value={statusFilter === "" ? "" : String(statusFilter)}
+                        valueLabel={statusFilter === "" ? undefined : getStatusLabel(statusFilter)}
+                        options={availableStatuses.map((status) => ({
+                            value: String(status),
+                            label: getStatusLabel(status),
+                        }))}
+                        searchable
+                        openDropdownId={openFilterDropdownId}
+                        setOpenDropdownId={setOpenFilterDropdownId}
+                        onChange={(value) => {
+                            const nextStatus = value === "" ? "" : Number(value) as ActivityStatus
+                            setStatusFilter(nextStatus)
+                            if (nextStatus === 4) {
+                                setIsCancelledSummaryExpanded(true)
+                            }
+                            setPage(1)
+                        }}
+                    />
 
-                                setStatusFilter(nextStatus)
-                                if (nextStatus === 4) {
-                                    setIsCancelledSummaryExpanded(true)
-                                }
-                                setPage(1)
-                            }}
-                        >
-                            <option value="">All statuses</option>
-                            {availableStatuses.map((status) => (
-                                <option key={status} value={status}>
-                                    {getStatusLabel(status)}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <SearchableFilterDropdown
+                        id="activity-priority-filter"
+                        label="Priority"
+                        placeholder="Select priority"
+                        value={priorityFilter === "" ? "" : String(priorityFilter)}
+                        valueLabel={priorityFilter === "" ? undefined : getPriorityLabel(priorityFilter)}
+                        options={availablePriorities.map((priority) => ({
+                            value: String(priority),
+                            label: getPriorityLabel(priority),
+                        }))}
+                        searchable
+                        openDropdownId={openFilterDropdownId}
+                        setOpenDropdownId={setOpenFilterDropdownId}
+                        onChange={(value) => {
+                            setPriorityFilter(
+                                value === "" ? "" : Number(value) as ActivityPriority
+                            )
+                            setPage(1)
+                        }}
+                    />
 
-                    <div className="activity-filter-field">
-                        <label htmlFor="activity-priority-filter">Priority</label>
-                        <select
-                            id="activity-priority-filter"
-                            value={priorityFilter}
-                            onChange={(event) => {
-                                const value = event.target.value
+                    <SearchableFilterDropdown
+                        id="activity-sort-by"
+                        label="Sort by"
+                        value={sortBy}
+                        options={[
+                            { value: "createdat", label: "Date created" },
+                            { value: "activitydate", label: "Activity date" },
+                            { value: "title", label: "Title" },
+                            { value: "status", label: "Status" },
+                            { value: "priority", label: "Priority" },
+                        ]}
+                        openDropdownId={openFilterDropdownId}
+                        setOpenDropdownId={setOpenFilterDropdownId}
+                        onChange={(value) => {
+                            setSortBy(value)
+                            setPage(1)
+                        }}
+                    />
 
-                                setPriorityFilter(
-                                    value === "" ? "" : Number(value) as ActivityPriority
-                                )
-                                setPage(1)
-                            }}
-                        >
-                            <option value="">All priorities</option>
-                            {availablePriorities.map((priority) => (
-                                <option key={priority} value={priority}>
-                                    {getPriorityLabel(priority)}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    <label>
-                        Sort by
-                        <select
-                            value={sortBy}
-                            onChange={(event) => {
-                                setSortBy(event.target.value)
-                                setPage(1)
-                            }}
-                        >
-                            <option value="createdat">Date created</option>
-                            <option value="activitydate">Activity date</option>
-                            <option value="title">Title</option>
-                            <option value="status">Status</option>
-                            <option value="priority">Priority</option>
-                        </select>
-                    </label>
-
-                    <label>
-                        Sort order
-                        <select
-                            value={descending ? "desc" : "asc"}
-                            onChange={(event) => {
-                                setDescending(event.target.value === "desc")
-                                setPage(1)
-                            }}
-                        >
-                            <option value="desc">Descending</option>
-                            <option value="asc">Ascending</option>
-                        </select>
-                    </label>
+                    <SearchableFilterDropdown
+                        id="activity-sort-order"
+                        label="Sort order"
+                        value={descending ? "desc" : "asc"}
+                        options={[
+                            { value: "desc", label: "Descending" },
+                            { value: "asc", label: "Ascending" },
+                        ]}
+                        openDropdownId={openFilterDropdownId}
+                        setOpenDropdownId={setOpenFilterDropdownId}
+                        onChange={(value) => {
+                            setDescending(value === "desc")
+                            setPage(1)
+                        }}
+                    />
 
                     <div className="activity-filter-actions">
                         <button
@@ -623,7 +837,12 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                     aria-label={isFiltersOpen ? "Hide filters" : "Show filters"}
                     aria-expanded={isFiltersOpen}
                     aria-controls="activity-filters"
-                    onClick={() => setIsFiltersOpen((open) => !open)}
+                    onClick={() => {
+                        if (isFiltersOpen) {
+                            setOpenFilterDropdownId(null)
+                        }
+                        setIsFiltersOpen((open) => !open)
+                    }}
                 >
                     <SlidersHorizontal size={20} aria-hidden="true" />
                 </button>
