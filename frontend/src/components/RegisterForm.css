@@ -89,10 +89,6 @@
   width: 100%;
 }
 
-.age-number-field {
-  width: 100%;
-}
-
 .age-number-group {
   display: flex;
   flex-direction: row;
@@ -101,9 +97,27 @@
   width: 100%;
 }
 
-.age-number-group > button {
+.age-number-group > .age-number-step-button {
   flex: 0 0 44px;
   border-radius: 7px;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 1px solid #d1d5db;
+  background: #ffffff;
+  color: #374151;
+  font-size: 20px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.age-number-group > .age-number-step-button:hover:not(:disabled) {
+  background: #f3f4f6;
+}
+
+.age-number-group > .age-number-step-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .age-number-group > input {
@@ -112,6 +126,12 @@
   width: auto;
   text-align: center;
   border-radius: 7px;
+}
+
+.age-number-group > .age-number-step-button:focus-visible,
+.age-number-group > input:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
 @media (max-width: 600px) {

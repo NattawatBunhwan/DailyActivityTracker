@@ -11,8 +11,7 @@ import CreateModal from "./CreateModal";
 import CreateActivityForm from "./CreateActivityForm";
 import "./Activities.css"
 import CreatedActivityForm from "./CreatedActivityForm";
-import { Layers, Clock3, RefreshCw, CircleCheck, CircleX, ChevronDown, ChevronUp, Filter, SlidersHorizontal } from "lucide-react"
-import { SearchField, Pagination } from "@heroui/react";
+import { Layers, Clock3, RefreshCw, CircleCheck, CircleX, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Search, X, Filter, SlidersHorizontal } from "lucide-react"
 import { getPriorityLabel, getStatusLabel } from "../utils/activity";
 import type { ReactNode } from "react"
 
@@ -32,6 +31,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     const [availablePriorities, setAvailablePriorities] = useState<ActivityPriority[]>([])
     const [search, setSearch] = useState("")
     const [debouncedSearch, setDebouncedSearch] = useState("")
+    const searchInputRef = useRef<HTMLInputElement | null>(null)
     const [sortBy, setSortBy] = useState("createdat")
     const [descending, setDescending] = useState(true)
     const [totalPages, setTotalPages] = useState<number>(0)
@@ -545,9 +545,16 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                             onClick={() => {
                                 setStatusFilter("")
                                 setPriorityFilter("")
+                                setSortBy("createdat")
+                                setDescending(true)
                                 setPage(1)
                             }}
-                            disabled={statusFilter === "" && priorityFilter === ""}
+                            disabled={
+                                statusFilter === "" &&
+                                priorityFilter === "" &&
+                                sortBy === "createdat" &&
+                                descending
+                            }
                         >
                             Clear Filters
                         </button>
@@ -580,20 +587,35 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                     </p>
                 </div>
 
-                <SearchField
-                    name="search"
-                    value={search}
-                    onChange={(value) => {
-                        setSearch(value)
-                        setPage(1)
-                    }}
-                >
-                    <SearchField.Group>
-                        <SearchField.SearchIcon />
-                        <SearchField.Input aria-label="Search activities" placeholder="Search activities..." />
-                        <SearchField.ClearButton />
-                    </SearchField.Group>
-                </SearchField>
+                <div className="activity-search">
+                    <Search size={18} className="activity-search-icon" aria-hidden="true" />
+                    <input
+                        ref={searchInputRef}
+                        type="search"
+                        name="search"
+                        aria-label="Search activities"
+                        placeholder="Search activities..."
+                        value={search}
+                        onChange={(event) => {
+                            setSearch(event.target.value)
+                            setPage(1)
+                        }}
+                    />
+                    {search !== "" && (
+                        <button
+                            type="button"
+                            className="activity-search-clear"
+                            aria-label="Clear search"
+                            onClick={() => {
+                                setSearch("")
+                                setPage(1)
+                                searchInputRef.current?.focus()
+                            }}
+                        >
+                            <X size={16} aria-hidden="true" />
+                        </button>
+                    )}
+                </div>
 
                 <button
                     type="button"
@@ -701,51 +723,59 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                 </p>
             </DeleteModal>
             
-            <Pagination className="activity-pagination">
-                <Pagination.Content>
-                    <Pagination.Item>
-                        <Pagination.Previous
-                            isDisabled={page === 1 || isLoadingActivities}
-                            onPress={() => setPage((p) => p - 1)}
+            <nav className="activity-pagination" aria-label="Activities pages">
+                <ul className="pagination-content">
+                    <li className="pagination-item">
+                        <button
+                            type="button"
+                            className="pagination-link pagination-link--nav"
+                            aria-label="Previous page"
+                            disabled={page === 1 || isLoadingActivities}
+                            onClick={() => setPage((p) => p - 1)}
                         >
-                            <Pagination.PreviousIcon />
+                            <ChevronLeft aria-hidden="true" />
                             <span>Previous</span>
-                        </Pagination.Previous>
-                    </Pagination.Item>
+                        </button>
+                    </li>
 
                     {paginationItems.map((item) =>
                         typeof item === "number" ? (
-                            <Pagination.Item key={item}>
-                                <Pagination.Link
-                                    isActive={item === page}
-                                    isDisabled={isLoadingActivities}
-                                    onPress={() => setPage(item)}
+                            <li className="pagination-item" key={item}>
+                                <button
+                                    type="button"
+                                    className="pagination-link"
+                                    aria-current={item === page ? "page" : undefined}
+                                    disabled={isLoadingActivities}
+                                    onClick={() => setPage(item)}
                                 >
                                     {item}
-                                </Pagination.Link>
-                            </Pagination.Item>
+                                </button>
+                            </li>
                         ) : (
-                            <Pagination.Item key={item}>
+                            <li className="pagination-item" key={item}>
                                 <span className="pagination-ellipsis" aria-hidden="true">
                                     …
                                 </span>
-                            </Pagination.Item>
+                            </li>
                         )
                     )}
 
-                    <Pagination.Item>
-                        <Pagination.Next
-                            isDisabled={
+                    <li className="pagination-item">
+                        <button
+                            type="button"
+                            className="pagination-link pagination-link--nav"
+                            aria-label="Next page"
+                            disabled={
                                 page === totalPages || isLoadingActivities
                             }
-                            onPress={() => setPage((p) => p + 1)}
+                            onClick={() => setPage((p) => p + 1)}
                         >
                             <span>Next</span>
-                            <Pagination.NextIcon />
-                        </Pagination.Next>
-                    </Pagination.Item>
-                </Pagination.Content>
-            </Pagination>
+                            <ChevronRight aria-hidden="true" />
+                        </button>
+                    </li>
+                </ul>
+            </nav>
         </section>
     )
 }
