@@ -1,10 +1,9 @@
 import { useState, type SubmitEvent } from "react";
 import { login, register } from "../api/authApi";
 import  useAuth  from "../hooks/useAuth"
-import { Label, NumberField } from '@heroui/react';
 import './RegisterForm.css'
 
-function RegisterForm() {
+function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
     const auth = useAuth()
 
     const [email, setEmail] = useState('')
@@ -60,6 +59,7 @@ function RegisterForm() {
             auth.setToken(loginData.token)
             auth.setExpiresAt(loginData.expiresAt)
             auth.setRefreshToken(loginData.refreshToken)
+            onAuthenticated()
         } catch (error) {
             if (registrationCompleted) {
                 setError('Account created successfully, but login failed. Please login with your new account.')
@@ -128,23 +128,42 @@ function RegisterForm() {
             </div>
             
             <div className="form-group age-field">
-                <NumberField
-                    className="age-number-field"
-                    name="age"
-                    minValue={1}
-                    maxValue={150}
-                    step={1}
-                    value={age === '' ? NaN : Number(age)}
-                    onChange={(value) => {setAge(Number.isNaN(value) ? '' : String(value))}}
-                    
-                >
-                    <Label>Age</Label>
-                    <NumberField.Group className="age-number-group">
-                    <NumberField.DecrementButton />
-                    <NumberField.Input className="age-number-input" />
-                    <NumberField.IncrementButton />
-                    </NumberField.Group>
-                </NumberField>
+                <label htmlFor="register-age">Age</label>
+                <div className="age-number-group">
+                    <button
+                        type="button"
+                        className="age-number-step-button"
+                        aria-label="Decrease age"
+                        onClick={() => setAge(String(Math.max(1, (Number(age) || 1) - 1)))}
+                        disabled={age !== '' && Number(age) <= 1}
+                    >
+                        <span aria-hidden="true">−</span>
+                    </button>
+                    <input
+                        id="register-age"
+                        className="age-number-input"
+                        name="age"
+                        type="number"
+                        min={1}
+                        max={150}
+                        step={1}
+                        value={age}
+                        onChange={(event) => setAge(event.target.value)}
+                        onInvalid={(event) => {
+                            event.preventDefault()
+                            setError('Please enter a valid age between 1 and 150.')
+                        }}
+                    />
+                    <button
+                        type="button"
+                        className="age-number-step-button"
+                        aria-label="Increase age"
+                        onClick={() => setAge(String(Math.min(150, (Number(age) || 0) + 1)))}
+                        disabled={age !== '' && Number(age) >= 150}
+                    >
+                        <span aria-hidden="true">+</span>
+                    </button>
+                </div>
             </div>
 
             <div className="form-group">

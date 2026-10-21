@@ -1,60 +1,111 @@
-
+/* Main Layout */
 main {
     box-sizing: border-box;
     max-width: 960px;
+    min-height: 100vh;
     margin: 0 auto;
-    padding: 48px 24px;
+    padding: 24px;
+    background-color: #f1f5f9;
 }
 
+/* Application Header */
 .app-header {
-    text-align: center;
-    margin: 0 auto 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    flex-wrap: wrap;
+    margin: 0 0 32px;
+    padding: 20px 24px;
+    border-radius: 10px;
+    background-color: #192957;
+    color: #ffffff;
+}
+
+.app-header-brand {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    min-width: 0;
+}
+
+.app-header-brand > svg {
+    flex-shrink: 0;
+    margin-top: 4px;
+}
+
+.app-header-text {
+    min-width: 0;
 }
 
 .app-header h1 {
-    margin: 0 0 12px;
-    font-size: 2rem;
+    margin: 0 0 6px;
+    color: #ffffff;
+    font-size: 1.4rem;
     line-height: 1.3;
-    color: #111827;
 }
 
 .app-header p {
-    color: #6b7280;
-    font-size: 1rem;
+    margin: 0;
+    color: #dbe4f5;
+    font-size: 0.9rem;
+    line-height: 1.5;
 }
 
+/* Auth Actions */
 .auth-section {
     display: flex;
-    justify-content: space-between;
     align-items: center;
+    justify-content: flex-end;
     gap: 16px;
-    margin-bottom: 24px;
-    padding: 16px 20px;
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    border-radius: 10px;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
 }
 
-.auth-section p {
-    color: #374151;
+.auth-user-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.auth-user-info svg {
+    flex-shrink: 0;
+}
+
+.auth-section .auth-user-info p {
+    margin: 0;
+    color: #ffffff;
     font-weight: 500;
 }
 
 .auth-section button {
-    padding: 9px 16px;
-    border: 1px solid #d1d5db;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid #52658f;
     border-radius: 6px;
-    background: #ffffff;
-    color: #374151;
+    background: transparent;
+    color: #ffffff;
     font: inherit;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background-color 0.2s ease;
 }
 
 .auth-section button:hover {
-    background: #f3f4f6;
+    background-color: #2b3d69;
 }
 
+.auth-section button:focus-visible {
+    outline: 2px solid #ffffff;
+    outline-offset: 3px;
+}
+
+/* Authentication Forms */
 .auth-footer {
     text-align: center;
     margin-top: 20px;
@@ -80,38 +131,101 @@ main {
     text-decoration: underline;
 }
 
-.activity-edit-button:focus-visible {
-    outline: 3px solid #2563eb;
-    outline-offset: 3px;
-}
-
 .auth-container {
     display: flex;
     flex-direction: column;
     align-items: center;
     width: 100%;
+    box-sizing: border-box;
+    padding: 28px 20px 36px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background-color: #f8fafc;
 }
 
-.auth-status {
-    margin-bottom: 8px;
+/* Authentication Page */
+.auth-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    padding: 32px 20px;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background-color: #f1f5f9;
+}
+
+.auth-intro {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 24px;
     text-align: center;
-    color: #6b7280;
+}
+
+.auth-intro-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.auth-intro h2 {
+    margin: 4px 0 0;
+    color: #111827;
+    font-size: 1.65rem;
+    line-height: 1.3;
+}
+
+.auth-intro p {
+    max-width: 420px;
+    margin: 0;
+    color: #64748b;
+    font-size: 0.95rem;
+    line-height: 1.6;
+}
+
+.auth-footer {
+    margin-top: 24px;
+    text-align: center;
+}
+
+.auth-footer p {
+    margin: 0 0 8px;
+    color: #64748b;
+}
+
+.auth-footer button {
+    padding: 6px 10px;
+    border: none;
+    background: transparent;
+    color: #2563eb;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.auth-footer button:hover {
+    color: #1d4ed8;
+    text-decoration: underline;
 }
 
 @media (max-width: 600px) {
-    main {
-        padding: 32px 16px;
+    .auth-container {
+        padding: 24px 14px;
     }
 
-    .app-header {
-        margin-bottom: 32px;
+    .auth-intro h2 {
+        font-size: 1.4rem;
     }
 
-    .app-header h1 {
-        font-size: 1.65rem;
-    }
-
-    .auth-section {
-        padding: 12px 14px;
+    .auth-intro p {
+        font-size: 0.9rem;
     }
 }

@@ -1,0 +1,205 @@
+/* Activity card layout and content */
+.activity-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    min-width: 0;
+    padding: 20px;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 5%);
+}
+
+.activity-card:hover {
+    border-color: #cbd5e1;
+    box-shadow: 0 4px 12px rgb(0 0 0 / 6%);
+}
+
+.activity-card-content,
+.activity-card-main {
+    min-width: 0;
+}
+
+.activity-card-main {
+    flex: 1;
+}
+
+.activity-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.activity-card-title {
+    margin: 0;
+    color: #111827;
+    font-size: 17px;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.activity-card-description {
+    display: -webkit-box;
+    margin: 10px 0;
+    overflow: hidden;
+    color: #6b7280;
+    font-size: 14px;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+}
+
+/* Status badge */
+.activity-status {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    padding: 8px 13px;
+    border-radius: 7px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.activity-status.status-pending {
+    border: 1px solid #d1d5db;
+    background-color: #e5e7eb;
+    color: #374151;
+}
+
+.activity-status.status-in-progress {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.activity-status.status-completed {
+    background-color: #dcfce7;
+    color: #166534;
+}
+
+.activity-status.status-cancelled {
+    background-color: #fee2e2;
+    color: #991b1b;
+}
+
+/* Priority badge: preserve existing appearance */
+.activity-priority {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 10px;
+    border-radius: 6px;
+    background-color: #f3f4f6;
+    color: #374151;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.activity-priority.priority-low {
+    background-color: #e0f2fe;
+    color: #075985;
+}
+
+.activity-priority.priority-medium {
+    background-color: #fef3c7;
+    color: #92400e;
+}
+
+.activity-priority.priority-high {
+    background-color: #ffedd5;
+    color: #9a3412;
+}
+
+.activity-card-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 12px;
+    font-size: 13px;
+}
+
+.activity-card-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.activity-card-footer {
+    padding-top: 14px;
+    border-top: 1px solid #e5e7eb;
+}
+
+.activity-card-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+.activity-card-actions button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 7px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background-color: #fff;
+    color: #374151;
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.activity-card-actions .activity-view-button,
+.activity-card-actions .activity-edit-button {
+    border-color: #bfdbfe;
+    background-color: #eff6ff;
+    color: #1d4ed8;
+}
+
+.activity-card-actions .activity-view-button:hover,
+.activity-card-actions .activity-edit-button:hover:not(:disabled) {
+    border-color: #93c5fd;
+    background-color: #dbeafe;
+}
+
+.activity-card-actions .activity-delete-button {
+    border-color: #fecaca;
+    background-color: #fef2f2;
+    color: #b91c1c;
+}
+
+.activity-card-actions .activity-delete-button:hover:not(:disabled) {
+    border-color: #fca5a5;
+    background-color: #fee2e2;
+}
+
+.activity-card-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.activity-card-actions button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+    .activity-card {
+        padding: 16px;
+    }
+
+    .activity-card-heading {
+        gap: 10px;
+    }
+
+    .activity-card-footer {
+        padding-top: 12px;
+    }
+}

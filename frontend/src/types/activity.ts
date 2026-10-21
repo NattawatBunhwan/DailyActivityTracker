@@ -12,6 +12,8 @@ export type ActivityPriority =
 export type Activity = {
     id: string
     userId: string
+    createdAt: string
+    updatedAt: string | null
     title: string
     description: string | null
     activityDate: string
@@ -35,10 +37,34 @@ export type UpdateActivityRequest = {
     priority: ActivityPriority
 }
 
-export type ActivitiesResponse = {
+export type PagedResponse<T> = {
     page: number
     pageSize: number
     totalCount: number
     totalPages: number
-    items: Activity[]
+    items: T[]
+}
+
+export type ActivitiesResponse = {
+    activities: PagedResponse<Activity>
+    availableStatuses: ActivityStatus[]
+    availablePriorities: ActivityPriority[]
+}
+
+export type ActivityQuery = {
+    page?: number
+    pageSize?: number
+    status?: ActivityStatus
+    priority?: ActivityPriority
+    search?: string
+    sortBy?: string
+    descending?: boolean
+}
+
+export type ActivitySummary = {
+    totalActivities: number
+    pendingCount: number
+    inProgressCount: number
+    completedCount: number
+    cancelledCount?: number
 }

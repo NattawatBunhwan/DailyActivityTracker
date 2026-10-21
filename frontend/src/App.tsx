@@ -4,71 +4,149 @@ import LoginForm from './components/LoginForm'
 import useAuth from './hooks/useAuth'
 import Activities from './components/Activities'
 import RegisterForm from './components/RegisterForm'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { CalendarCheck, LogOut, UserRound, UserRoundPlus } from "lucide-react"
+import ActivityDetails from './components/ActivityDetails'
 
 function App() {
   const auth = useAuth()
   const [showRegister, setShowRegister] = useState(false)
+  const [currentPath, setCurrentPath] = useState(window.location.pathname)
+
+  useEffect(() => {
+    const handlePopState = () => setCurrentPath(window.location.pathname)
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  function navigate(path: string, replace = false) {
+    if (replace) {
+      window.history.replaceState({}, '', path)
+    } else {
+      window.history.pushState({}, '', path)
+    }
+    setCurrentPath(path)
+  }
+  
   
   return (
     <main>
-      <div className="app-header">
-        <Header 
-          title="Daily Activity Tracker"
-          description="Track your activities and stay organized." 
-        />
-      </div>
+      <header className="app-header">
+        <div className="app-header-brand">
+          <CalendarCheck
+            size={24}
+            aria-hidden="true"
+          />
+
+          <div className="app-header-text">
+            <Header
+              title="Daily Activity Tracker"
+              description="Track your activities and stay organized."
+            />
+          </div>
+        </div>
+
+        {auth.isAuthenticated && (
+          <div className="auth-section">
+            <div className="auth-user-info">
+              <UserRound
+                size={20}
+                aria-hidden="true"
+              />
+              <p>Logged in</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+            >
+              <LogOut
+                size={16}
+                aria-hidden="true"
+              />
+              <span>Logout</span>
+            </button>
+          </div>
+        )}
+      </header>
 
       {auth.isAuthenticated ? (
-        <>
-          <div className='auth-section'>
-            <p>Logged in</p>
-
-            <button onClick={handleLogout}>
-              Logout
-            </button> 
-          </div>
-          
-          <div>
-            <Activities/>
-          </div>   
-        </>
-        
-      ) : (
-        <>
-          {showRegister ? (
+        /^\/activities\/[^/]+\/?$/.test(currentPath) ? (
+          <ActivityDetails
+            activityId={decodeURIComponent(currentPath.split('/')[2])}
+            onBack={() => navigate('/activities')}
+            onDeleted={() => navigate('/activities')}
+          />
+        ) : currentPath === '/activities' || currentPath === '/' ? (
+          <Activities onViewDetails={(id) => navigate(`/activities/${encodeURIComponent(id)}`)} />
+        ) : (
+          <section className="activities"><h1>Page not found</h1><button type="button" onClick={() => navigate('/activities')}>Back to Activities</button></section>
+        )
+        ) : (
+          showRegister ? (
             <>
-              <RegisterForm />
+              <div className="auth-container">
+                <div className="auth-intro">
+                  <div className="auth-intro-icon" aria-hidden="true">
+                    <UserRoundPlus size={28} />
+                  </div>
 
-              <div className="auth-footer">
-                <p>Already have an account?</p>
-                <button onClick={() => setShowRegister(false)}>
-                  Back to Login
-                </button>
+                  <h2>Create your account</h2>
+
+                  <p>
+                    Start organizing your day with Daily Activity Tracker.
+                  </p>
+                </div>
+
+                <RegisterForm onAuthenticated={() => navigate('/activities', true)} />
+
+                <div className="auth-footer">
+                  <p>Already have an account?</p>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowRegister(false)}
+                  >
+                    Back to Login
+                  </button>
+                </div>
               </div>
             </>
           ) : (
             <div className="auth-container">
-              <p className="auth-status">Not logged in</p>
+              <div className="auth-intro">
+                <div className="auth-intro-icon" aria-hidden="true">
+                    <CalendarCheck size={28} />
+                </div>
 
-              <LoginForm/>
+                <h2>Welcome back</h2>
+
+                <p>Log in to manage your daily activities.</p>
+              </div>
+
+              <LoginForm onAuthenticated={() => navigate('/activities', true)} />
 
               <div className="auth-footer">
                 <p>Don't have an account?</p>
-                <button onClick={() => setShowRegister(true)}>
-                  Create Account
+
+                <button
+                    type="button"
+                    onClick={() => setShowRegister(true)}
+                >
+                    Create Account
                 </button>
               </div>
             </div>
-          )}
-        </>
-      )}
+          )
+        )}
     </main>
   )
 
+
   function handleLogout() {
     if (window.confirm("Are you sure you want to logout")) {
-      auth.logout()
+      navigate('/activities', true)
+      void auth.logout()
       setShowRegister(false)
     }
   }

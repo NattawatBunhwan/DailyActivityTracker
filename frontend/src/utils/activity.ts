@@ -5,7 +5,7 @@ export function getStatusLabel(status: ActivityStatus) {
         case 1:
             return "Pending"
         case 2:
-            return "InProgress"
+            return "In Progress"
         case 3:
             return "Completed"
         case 4:

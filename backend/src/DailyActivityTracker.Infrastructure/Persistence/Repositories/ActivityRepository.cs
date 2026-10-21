@@ -1,6 +1,7 @@
 using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Application.Interfaces.Repositories;
 using DailyActivityTracker.Domain.Entities;
+using DailyActivityTracker.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace DailyActivityTracker.Infrastructure.Persistence.Repositories;
@@ -40,6 +41,88 @@ public class ActivityRepository : IActivityRepository
     public Task<int> CountByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
         return ApplyFilters(userId, query).CountAsync(cancellationToken);
+    }
+
+
+    public Task<List<ActivityStatus>> GetAvailableStatusesByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    {
+        var activities = _dbContext.Activities
+            .Where(activity => activity.UserId == userId);
+
+        // กรองด้วย Priority แต่ไม่กรองด้วย Status
+        if (query.Priority.HasValue)
+        {
+            activities = activities.Where(
+                activity => activity.Priority == query.Priority.Value);
+        }
+
+        // ใช้ Search เหมือนกับรายการกิจกรรม
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            activities = activities.Where(activity =>
+                EF.Functions.ILike(activity.Title, $"%{query.Search}%") ||
+                (activity.Description != null &&
+                 EF.Functions.ILike(
+                     activity.Description,
+                     $"%{query.Search}%")));
+        }
+
+        return activities
+            .Select(activity => activity.Status)
+            .Distinct()
+            .OrderBy(status => status)
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<List<ActivityPriority>> GetAvailablePrioritiesByUserIdAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    {
+        var activities = _dbContext.Activities
+            .Where(activity => activity.UserId == userId);
+
+        // กรองด้วย Status แต่ไม่กรองด้วย Priority
+        if (query.Status.HasValue)
+        {
+            activities = activities.Where(
+                activity => activity.Status == query.Status.Value);
+        }
+
+        // ใช้ Search เหมือนกับรายการกิจกรรม
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            activities = activities.Where(activity =>
+                EF.Functions.ILike(activity.Title, $"%{query.Search}%") ||
+                (activity.Description != null &&
+                 EF.Functions.ILike(
+                     activity.Description,
+                     $"%{query.Search}%")));
+        }
+
+        return activities
+            .Select(activity => activity.Priority)
+            .Distinct()
+            .OrderBy(priority => priority)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<ActivitySummaryResponse> GetSummaryByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var activities = _dbContext.Activities.Where(activity => activity.UserId == userId);
+
+        var summary = await activities
+            .GroupBy(_ => 1)
+            .Select(group => new ActivitySummaryResponse
+            {
+                TotalActivities = group.Count(),
+
+                PendingCount = group.Count(activity => activity.Status == ActivityStatus.Pending),
+
+                InProgressCount = group.Count(activity => activity.Status == ActivityStatus.InProgress),
+
+                CompletedCount = group.Count(activity => activity.Status == ActivityStatus.Completed)
+            })
+            .FirstOrDefaultAsync(cancellationToken);
+
+        return summary ?? new ActivitySummaryResponse();
     }
 
     public async Task AddAsync(Activity activity, CancellationToken cancellationToken = default)
@@ -101,7 +184,11 @@ public class ActivityRepository : IActivityRepository
                 ? activities.OrderByDescending(x => x.ActivityDate)
                 : activities.OrderBy(x => x.ActivityDate),
 
-            _ => query.Descending ? activities.OrderByDescending(x => x.ActivityDate) : activities.OrderBy(x => x.ActivityDate)
+            "createdat" => query.Descending
+                ? activities.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
+                : activities.OrderBy(x =>x.CreatedAt).ThenBy(x => x.Id),
+
+            _ => activities.OrderByDescending(x => x.CreatedAt).ThenByDescending(x => x.Id)
         };
     }
 }

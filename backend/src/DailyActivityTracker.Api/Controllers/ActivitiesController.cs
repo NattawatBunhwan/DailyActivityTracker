@@ -1,9 +1,9 @@
+using DailyActivityTracker.Application.Common;
 using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Application.Features.Activities.Services;
 using DailyActivityTracker.Application.Interfaces.Services;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using DailyActivityTracker.Application.Common;
+using Microsoft.AspNetCore.Mvc;
 
 namespace DailyActivityTracker.Api.Controllers;
 
@@ -25,19 +25,17 @@ public class ActivitiesController : ControllerBase
     public async Task<ActionResult<ActivityResponse>> Create(CreateActivityRequest request, CancellationToken cancellationToken = default)
     {
         var userId = _currentUserService.UserId;
-        
+
         var activity = await _activityService.CreateAsync(userId, request, cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = activity.Id }, activity);
     }
 
-    [ProducesResponseType(typeof(PagedResponse<ActivityResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ActivitiesListResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ValidationProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     [HttpGet]
-    public async Task<ActionResult<PagedResponse<ActivityResponse>>> GetAll(
-    [FromQuery] ActivityQueryParameters query,
-    CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ActivitiesListResponse>> GetAll([FromQuery] ActivityQueryParameters query, CancellationToken cancellationToken = default)
     {
         var currentUserId = _currentUserService.UserId;
 
@@ -47,6 +45,18 @@ public class ActivitiesController : ControllerBase
             cancellationToken);
 
         return Ok(activities);
+    }
+
+    [ProducesResponseType(typeof(ActivitySummaryResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [HttpGet("summary")]
+    public async Task<ActionResult<ActivitySummaryResponse>> GetSummary(CancellationToken cancellationToken = default)
+    {
+        var currentUserId = _currentUserService.UserId;
+
+        var summary = await _activityService.GetSummaryByUserIdAsync(currentUserId, cancellationToken);
+
+        return Ok(summary);
     }
 
     [HttpGet("{id:guid}")]
@@ -65,10 +75,7 @@ public class ActivitiesController : ControllerBase
     }
 
     [HttpPut("{activityId:guid}")]
-    public async Task<ActionResult<ActivityResponse>> Update(
-        Guid activityId,
-        UpdateActivityRequest request,
-        CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ActivityResponse>> Update(Guid activityId, UpdateActivityRequest request, CancellationToken cancellationToken = default)
     {
         var currentUserId = _currentUserService.UserId;
 
@@ -86,7 +93,7 @@ public class ActivitiesController : ControllerBase
     public async Task<IActionResult> Delete(Guid activityId, CancellationToken cancellationToken = default)
     {
         var currentUserId = _currentUserService.UserId;
-        
+
         var deleted = await _activityService.DeleteAsync(activityId, currentUserId, cancellationToken);
 
         if (!deleted)
