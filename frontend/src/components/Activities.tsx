@@ -233,6 +233,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     const [sortBy, setSortBy] = useState("createdat")
     const [descending, setDescending] = useState(true)
     const [totalPages, setTotalPages] = useState<number>(0)
+    const [totalCount, setTotalCount] = useState(0)
     const [selectedActivityId, setSelectedActivityId] = useState<string | null>(null)
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
     const [refreshUpdateTrigger, setRefreshUpdateTrigger] = useState(0)
@@ -424,6 +425,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
 
             setActivities(data.activities.items)
             setTotalPages(data.activities.totalPages)
+            setTotalCount(data.activities.totalCount)
             setAvailableStatuses(data.availableStatuses)
             setAvailablePriorities(data.availablePriorities)
             setHasLoadedActivities(true)
@@ -476,21 +478,11 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
         }
     }
 
-    function handleEditActivity(activityId: string) {
-        setSelectedActivityId(activityId)
-    }
-
     function handleActivityUpdated() {
         pendingEditFocusRef.current = true
         setRefreshUpdateTrigger(prev => prev + 1)
         setSelectedActivityId(null)
         setSelectedActivity(null)
-    }
-
-    function handleDeleteActivity(button: HTMLButtonElement, activityId: string) {
-        setDeleteError(null)
-        deleteButtonRef.current = button
-        setDeleteActivityId(activityId)
     }
 
     function handleRetrySelectedActivity() {
@@ -563,11 +555,6 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
 
     function handleCloseCreateModal() {
         setIsCreateModalOpen(false)
-    }
-
-    function handleEditButtonClick(button: HTMLButtonElement, activityId: string) {
-        editButtonRef.current = button
-        editActivityIdRef.current = activityId
     }
 
     const paginationItems: (
@@ -759,8 +746,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                             onClick={() => {
                                 setStatusFilter("")
                                 setPriorityFilter("")
-                                setSortBy("createdat")
-                                setDescending(true)
+                                setSearch("")
                                 setPage(1)
                             }}
                             disabled={
@@ -862,17 +848,24 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                     </button>
                 </div>
             ) : activities.length === 0 ? (
-                <EmptyState
-                    onOpenCreateModal={handleOpenCreateModal}
-                />
+                (activitySummary?.totalActivities ?? totalCount) === 0 ? (
+                    <EmptyState onOpenCreateModal={handleOpenCreateModal} />
+                ) : (
+                    <section className="empty-state" aria-labelledby="empty-matches-title">
+                        <h2 id="empty-matches-title">No matching activities</h2>
+                        <p className="empty-state-description">No activities match your search or filters.</p>
+                        <button type="button" className="empty-state-button" onClick={() => {
+                            setSearch("")
+                            setStatusFilter("")
+                            setPriorityFilter("")
+                            setPage(1)
+                        }}>Clear search and filters</button>
+                    </section>
+                )
             ) : (
                 <ActivityList
                     activities={activities}
-                    onEdit={handleEditActivity}
-                    onEditButtonClick={handleEditButtonClick}
-                    onDelete={handleDeleteActivity}
                     onViewDetails={onViewDetails}
-                    isDeleting={isDeleting}
                 />
             )}
 

@@ -12,12 +12,19 @@ function App() {
   const auth = useAuth()
   const [showRegister, setShowRegister] = useState(false)
   const [currentPath, setCurrentPath] = useState(window.location.pathname)
+  const listScrollY = useState(() => ({ current: 0 }))[0]
 
   useEffect(() => {
-    const handlePopState = () => setCurrentPath(window.location.pathname)
+    const handlePopState = () => {
+      const path = window.location.pathname
+      setCurrentPath(path)
+      if (path === "/activities" || path === "/") {
+        requestAnimationFrame(() => window.scrollTo(0, listScrollY.current))
+      }
+    }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [])
+  }, [listScrollY])
 
   function navigate(path: string, replace = false) {
     if (replace) {
@@ -71,18 +78,24 @@ function App() {
       </header>
 
       {auth.isAuthenticated ? (
-        /^\/activities\/[^/]+\/?$/.test(currentPath) ? (
-          <ActivityDetails
+        <>
+          <div hidden={/^\/activities\/[^/]+\/?$/.test(currentPath)}>
+            <Activities onViewDetails={(id) => {
+              listScrollY.current = window.scrollY
+              navigate(`/activities/${encodeURIComponent(id)}`)
+            }} />
+          </div>
+          {/^\/activities\/[^/]+\/?$/.test(currentPath) ? (
+            <ActivityDetails
             activityId={decodeURIComponent(currentPath.split('/')[2])}
             onBack={() => navigate('/activities')}
             onDeleted={() => navigate('/activities')}
-          />
-        ) : currentPath === '/activities' || currentPath === '/' ? (
-          <Activities onViewDetails={(id) => navigate(`/activities/${encodeURIComponent(id)}`)} />
-        ) : (
-          <section className="activities"><h1>Page not found</h1><button type="button" onClick={() => navigate('/activities')}>Back to Activities</button></section>
-        )
-        ) : (
+            />
+          ) : currentPath === '/activities' || currentPath === '/' ? null : (
+            <section className="activities"><h1>Page not found</h1><button type="button" onClick={() => navigate('/activities')}>Back to Activities</button></section>
+          )}
+        </>
+      ) : (
           showRegister ? (
             <>
               <div className="auth-container">

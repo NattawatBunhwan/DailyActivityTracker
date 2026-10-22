@@ -203,3 +203,18 @@
         padding-top: 12px;
     }
 }
+.activity-card--clickable {
+    cursor: pointer;
+    transition: box-shadow 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+
+.activity-card--clickable:hover {
+    border-color: #93c5fd;
+    box-shadow: 0 6px 18px rgb(15 23 42 / 10%);
+    transform: translateY(-1px);
+}
+
+.activity-card--clickable:focus-visible {
+    outline: 3px solid #2563eb;
+    outline-offset: 3px;
+}
