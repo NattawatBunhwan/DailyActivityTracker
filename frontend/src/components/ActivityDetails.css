@@ -42,6 +42,7 @@
     align-items: center;
     justify-content: center;
     gap: 7px;
+    min-width: 92px;
     min-height: 38px;
     padding: 8px 12px;
     border: 1px solid #2563eb;
@@ -128,6 +129,18 @@
     white-space: nowrap;
 }
 
+.details-status-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.details-status-label {
+    color: #334155;
+    font-size: 15px;
+    font-weight: 700;
+}
+
 .details-status.status-pending {
     border: 1px solid #d1d5db;
     background-color: #e5e7eb;
@@ -194,6 +207,19 @@
     font-weight: 600;
 }
 
+.details-priority-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.details-priority-label {
+    color: #334155;
+    font-size: 15px;
+    font-weight: 700;
+}
+
 .details-priority.priority-low {
     background-color: #e0f2fe;
     color: #075985;
@@ -210,7 +236,7 @@
 }
 
 .details-description {
-    margin: 0;
+    margin: 0 0 0 10px;
     color: #475569;
     line-height: 1.7;
     white-space: pre-wrap;
@@ -222,6 +248,8 @@
 .details-metadata {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-content: center;
+    justify-items: center;
     gap: 20px;
     margin: 26px 0 0;
     padding-top: 20px;
@@ -230,24 +258,29 @@
 
 .details-metadata-item {
     min-width: 0;
+    width: 100%;
+    max-width: 240px;
 }
 
 .details-metadata dt {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 7px;
     margin-bottom: 8px;
-    color: #64748b;
-    font-size: 13px;
+    color: #334155;
+    font-size: 15px;
+    font-weight: 700;
 }
 
 .details-metadata dt svg {
     flex-shrink: 0;
-    color: #64748b;
+    color: #334155;
 }
 
 .details-metadata dd {
     margin: 0;
+    text-align: center;
     color: #1f2937;
     font-size: 14px;
     font-weight: 600;
@@ -295,6 +328,10 @@
         grid-template-columns: 1fr;
         gap: 16px;
     }
+
+    .details-metadata-item { max-width: none; }
+    .details-metadata dt { justify-content: flex-start; }
+    .details-metadata dd { text-align: left; }
 }
 
 @media (max-width: 400px) {

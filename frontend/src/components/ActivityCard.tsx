@@ -14,6 +14,7 @@ function ActivityCard({ activity, onViewDetails }: ActivityCardProps) {
             className="activity-card activity-card--clickable"
             role="link"
             tabIndex={0}
+            data-activity-id={activity.id}
             aria-label={`View details for ${activity.title}`}
             onClick={() => onViewDetails(activity.id)}
             onKeyDown={(event) => {

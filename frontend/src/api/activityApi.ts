@@ -93,12 +93,17 @@ export async function updateActivity(token: string, activityId: string, request:
 }
 
 export async function deleteActivity(token: string, activityId: string): Promise<void> {
-    const response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
-        method: 'DELETE',
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    })
+    let response: Response
+    try {
+        response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
+            method: 'DELETE',
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+    } catch {
+        throw new Error("Unable to connect to the server. Please check your internet connection and try again.")
+    }
 
     await handleApiError(response, "Failed to delete activity.")
 }

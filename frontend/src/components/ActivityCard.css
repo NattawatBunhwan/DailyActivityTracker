@@ -49,8 +49,8 @@
     line-height: 1.6;
     overflow-wrap: anywhere;
     -webkit-box-orient: vertical;
-    -webkit-line-clamp: 3;
-    line-clamp: 3;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
 }
 
 /* Status badge */

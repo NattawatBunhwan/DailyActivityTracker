@@ -8,10 +8,11 @@ function LoginForm({ onAuthenticated }: { onAuthenticated: () => void }) {
     const [password, setPassword] = useState('')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+    const [fieldErrors, setFieldErrors] = useState({ email: '', password: '' })
     const auth = useAuth()
 
     return (
-        <form className="login-form" onSubmit={handleLogin}>
+        <form className="login-form" onSubmit={handleLogin} noValidate>
             <h2>Login</h2>
 
             <div className="form-group">
@@ -20,11 +21,17 @@ function LoginForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                     id="email"
                     name="email"
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    onChange={(event) => {
+                        setEmail(event.target.value)
+                        if (event.target.value.trim()) setFieldErrors(current => ({ ...current, email: '' }))
+                    }}
                     placeholder="Email"
                     autoComplete="email"
                     required
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? "email-error" : undefined}
                 />
+                {fieldErrors.email && <p className="field-error" id="email-error" role="alert">{fieldErrors.email}</p>}
             </div>
 
             <div className="form-group">
@@ -34,11 +41,17 @@ function LoginForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                     name="password"
                     type="password"
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(event) => {
+                        setPassword(event.target.value)
+                        if (event.target.value) setFieldErrors(current => ({ ...current, password: '' }))
+                    }}
                     placeholder="Password"
                     autoComplete="current-password"
                     required
+                    aria-invalid={Boolean(fieldErrors.password)}
+                    aria-describedby={fieldErrors.password ? "password-error" : undefined}
                 />
+                {fieldErrors.password && <p className="field-error" id="password-error" role="alert">{fieldErrors.password}</p>}
             </div>
 
             <button
@@ -59,8 +72,15 @@ function LoginForm({ onAuthenticated }: { onAuthenticated: () => void }) {
     
     async function handleLogin(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault()
-        
         setError('')
+
+        const nextFieldErrors = {
+            email: email.trim() ? '' : 'Email is required.',
+            password: password ? '' : 'Password is required.',
+        }
+        setFieldErrors(nextFieldErrors)
+        if (nextFieldErrors.email || nextFieldErrors.password) return
+        
         setIsLoading(true)
         
         try {  

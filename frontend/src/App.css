@@ -217,6 +217,10 @@ main {
 }
 
 @media (max-width: 600px) {
+    .app-header .auth-section {
+        margin-left: auto;
+    }
+
     .auth-container {
         padding: 24px 14px;
     }

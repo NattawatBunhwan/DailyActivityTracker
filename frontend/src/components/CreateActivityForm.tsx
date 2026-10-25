@@ -28,9 +28,10 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
     const auth = useAuth()
     const [isLoading, setIsLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState("")
+    const [fieldErrors, setFieldErrors] = useState({ title: "", activityDate: "" })
 
     return (
-        <form className="activity-form" onSubmit={handleSubmit}>
+        <form className="activity-form" onSubmit={handleSubmit} noValidate>
             <header>
                 <h2 id="create-modal-title">Create Activity</h2>
                 {errorMessage && (
@@ -43,10 +44,13 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
                 <input 
                     type="text" 
                     value={formData.title} 
-                    onChange={event => setFormData({...formData, title: event.target.value})} 
+                    onChange={event => { setFormData({...formData, title: event.target.value}); if (event.target.value.trim()) setFieldErrors(current => ({ ...current, title: "" })) }} 
                     id="title"
                     required
+                    aria-invalid={Boolean(fieldErrors.title)}
+                    aria-describedby={fieldErrors.title ? "create-title-error" : undefined}
                 />
+                {fieldErrors.title && <p className="field-error" id="create-title-error" role="alert">{fieldErrors.title}</p>}
             </div>
 
             <div className="activity-form__field">
@@ -65,10 +69,11 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
                     <input 
                         type="datetime-local"
                         value={formData.activityDate}
-                        onChange={event => setFormData({...formData, activityDate: event.target.value})}
+                        onChange={event => { setFormData({...formData, activityDate: event.target.value}); if (event.target.value) setFieldErrors(current => ({ ...current, activityDate: "" })) }}
                         id="activityDate"
                         required
                     />
+                    {fieldErrors.activityDate && <p className="field-error" id="create-date-error" role="alert">{fieldErrors.activityDate}</p>}
                 </div>
 
                 <div className="activity-form__field">
@@ -118,6 +123,13 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
         if (isLoading) {
             return
         }
+
+        const nextFieldErrors = {
+            title: formData.title.trim() ? "" : "Title is required.",
+            activityDate: formData.activityDate ? "" : "Activity date is required.",
+        }
+        setFieldErrors(nextFieldErrors)
+        if (Object.values(nextFieldErrors).some(Boolean)) return
 
         if (!auth.token) {
             setErrorMessage("User is not authenticated")

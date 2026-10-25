@@ -6,6 +6,7 @@ import useAuth from "../hooks/useAuth";
 import EditActivityForm from "./EditActivityForm";
 import EditModal from "./EditModal";
 import DeleteModal from "./DeleteModal";
+import ConfirmDialog from "./ConfirmDialog";
 import EmptyState from "./EmptyState";
 import CreateModal from "./CreateModal";
 import CreateActivityForm from "./CreateActivityForm";
@@ -212,7 +213,9 @@ function SearchableFilterDropdown({
     )
 }
 
-function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => void }) {
+type ActivityMutation = { kind: "create" | "update" | "delete"; id: string; nonce: number }
+
+function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isActive, focusActivityId }: { onViewDetails: (activityId: string) => void; onCreateActivity: () => void; onNotify: (message: string) => void; mutation: ActivityMutation | null; isActive: boolean; focusActivityId: string | null }) {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
     const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null)
@@ -245,6 +248,8 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     const deleteButtonRef = useRef<HTMLButtonElement | null>(null)
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
     const [deleteActivityId, setDeleteActivityId] = useState<string | null>(null)
+    const [isLeaveConfirmOpen, setIsLeaveConfirmOpen] = useState(false)
+    const leaveConfirmTriggerRef = useRef<HTMLElement | null>(null)
     const activityToDelete = activities.find(activity => activity.id === deleteActivityId)
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
     const [refreshTrigger, setRefreshTrigger] = useState(0)
@@ -260,6 +265,8 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     const [isFiltersOpen, setIsFiltersOpen] = useState(false)
     const [openFilterDropdownId, setOpenFilterDropdownId] = useState<string | null>(null)
     const [isCancelledSummaryExpanded, setIsCancelledSummaryExpanded] = useState(false)
+    const wasListActive = useRef(isActive)
+    const shouldRestoreCardFocus = useRef(false)
 
     const summaryCards: {
         title: string
@@ -290,6 +297,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
 
     function renderSummaryCard(card: (typeof summaryCards)[number] | typeof cancelledSummaryCard) {
         const isSelected = statusFilter === card.status
+        const isEmptyStatus = card.status !== "" && card.count === 0
 
         return (
             <button
@@ -297,6 +305,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                 type="button"
                 className={`summary-card ${card.className}${isSelected ? " is-selected" : ""}`}
                 aria-pressed={isSelected}
+                disabled={isEmptyStatus}
                 onClick={() => selectSummaryStatus(card.status)}
             >
                 <span className="summary-card-heading">
@@ -320,7 +329,8 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     }
     
     useEffect(() => {
-        setPage(1)
+        const timeoutId = window.setTimeout(() => setPage(1), 0)
+        return () => window.clearTimeout(timeoutId)
     }, [statusFilter, priorityFilter, search, sortBy, descending])
 
     useEffect(() => {
@@ -342,10 +352,62 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     }, [auth.token, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger])
 
     useEffect(() => {
+        const mutationValue = mutation
+        if (!mutationValue || !auth.token) return
+        const change = mutationValue
+        let cancelled = false
+        async function locateMutatedRow() {
+            try {
+                if (change.kind === "delete") {
+                    const first = await getActivities(auth.token, { page: 1, pageSize: 10, sortBy, descending })
+                    if (!cancelled) setPage(current => Math.max(1, Math.min(current, first.activities.totalPages || 1)))
+                    return
+                }
+                const first = await getActivities(auth.token, { page: 1, pageSize: 10, sortBy, descending })
+                for (let targetPage = 1; targetPage <= first.activities.totalPages; targetPage += 1) {
+                    const result = targetPage === 1 ? first : await getActivities(auth.token, { page: targetPage, pageSize: 10, sortBy, descending })
+                    if (cancelled) return
+                    if (result.activities.items.some(item => item.id === change.id)) {
+                        setPage(targetPage)
+                        return
+                    }
+                }
+            } catch {
+                // Keep the default first page visible if positioning the changed row fails.
+            }
+        }
+        const timeoutId = window.setTimeout(() => {
+            setRefreshTrigger(previous => previous + 1)
+            setSearch("")
+            setDebouncedSearch("")
+            setStatusFilter("")
+            setPriorityFilter("")
+            setOpenFilterDropdownId(null)
+            setPage(1)
+            void locateMutatedRow()
+        }, 0)
+        return () => { cancelled = true; window.clearTimeout(timeoutId) }
+    }, [mutation, auth.token, sortBy, descending])
+
+    useEffect(() => {
         if (!selectedActivityId) return
         
         loadSelectedActivity(auth.token, selectedActivityId)
     }, [auth.token, selectedActivityId])
+
+    useEffect(() => {
+        if (isActive && !wasListActive.current) shouldRestoreCardFocus.current = true
+        wasListActive.current = isActive
+        if (!isActive || !shouldRestoreCardFocus.current || isLoadingActivities) return
+        const frame = requestAnimationFrame(() => {
+            const cards = Array.from(document.querySelectorAll<HTMLElement>(".activity-card--clickable"))
+            const target = cards.find(card => card.dataset.activityId === focusActivityId) ?? cards[0]
+            if (target) target.focus({ preventScroll: true })
+            else document.querySelector<HTMLElement>(".activity-list-header h2")?.focus({ preventScroll: true })
+            shouldRestoreCardFocus.current = false
+        })
+        return () => cancelAnimationFrame(frame)
+    }, [isActive, focusActivityId, isLoadingActivities, activities])
 
     useEffect(() => {
         if (wasEditModalOpenRef.current && !isEditModalOpen) {
@@ -499,13 +561,18 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
         }
 
         if (hasUnsavedChanges) {
-            const confirmed = window.confirm("You have unsaved changes. Are you sure you want to leave?")
-            
-            if (!confirmed) {
-                return
-            }
+            leaveConfirmTriggerRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+            setIsLeaveConfirmOpen(true)
+            return
         }
 
+        setHasUnsavedChanges(false)
+        setSelectedActivity(null)
+        setSelectedActivityId(null)
+    }
+
+    function confirmLeaveEdit() {
+        setIsLeaveConfirmOpen(false)
         setHasUnsavedChanges(false)
         setSelectedActivity(null)
         setSelectedActivityId(null)
@@ -526,7 +593,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
 
             setDeleteActivityId(null)
 
-            window.alert("Activity deleted successfully.")
+            onNotify("Activity deleted successfully")
         } catch {
             setDeleteError("Failed to delete activity.")
         } finally {
@@ -548,9 +615,8 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
     }
 
     function handleOpenCreateModal(trigger: HTMLButtonElement) {
-        createTriggerRef.current = trigger
-        setCreatedActivity(null)
-        setIsCreateModalOpen(true)
+        void trigger
+        onCreateActivity()
     }
 
     function handleCloseCreateModal() {
@@ -623,6 +689,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
             </header>
 
             <div className="activity-summary">
+                <h2 className="activity-summary-title">Activity Summary</h2>
                 <div className="summary-primary-grid">
                     {summaryCards.map(renderSummaryCard)}
                 </div>
@@ -746,7 +813,9 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                             onClick={() => {
                                 setStatusFilter("")
                                 setPriorityFilter("")
-                                setSearch("")
+                                setSortBy("createdat")
+                                setDescending(true)
+                                setOpenFilterDropdownId(null)
                                 setPage(1)
                             }}
                             disabled={
@@ -774,7 +843,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
       
             <header className="activity-list-header">
                 <div className="activity-list-heading-group">
-                    <h2>Activities List</h2>
+                    <h2 tabIndex={-1}>Activities List</h2>
                     <p className="activity-list-context">
                         <Filter size={14} aria-hidden="true" />
                         <span>
@@ -934,8 +1003,17 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                     Are you sure you want to delete <strong>"{activityToDelete?.title}"</strong>?
                 </p>
             </DeleteModal>
+            <ConfirmDialog
+                isOpen={isLeaveConfirmOpen}
+                title="Discard changes?"
+                message="You have unsaved changes. Do you want to discard them and leave?"
+                confirmLabel="Discard changes"
+                onCancel={() => setIsLeaveConfirmOpen(false)}
+                onConfirm={confirmLeaveEdit}
+                triggerButton={leaveConfirmTriggerRef.current}
+            />
             
-            <nav className="activity-pagination" aria-label="Activities pages">
+            {totalPages > 0 && <nav className="activity-pagination" aria-label="Activities pages">
                 <ul className="pagination-content">
                     <li className="pagination-item">
                         <button
@@ -987,7 +1065,7 @@ function Activities({ onViewDetails }: { onViewDetails: (activityId: string) => 
                         </button>
                     </li>
                 </ul>
-            </nav>
+            </nav>}
         </section>
     )
 }
