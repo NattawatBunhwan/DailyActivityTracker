@@ -15,6 +15,12 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
 
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
+    const [fieldErrors, setFieldErrors] = useState({ email: '', password: '', firstName: '', lastName: '', age: '', occupation: '' })
+
+    function updateField<K extends keyof typeof fieldErrors>(field: K, value: string, setter: (value: string) => void) {
+        setter(value)
+        if (value.trim()) setFieldErrors(current => ({ ...current, [field]: '' }))
+    }
 
     async function handleRegister(event: SubmitEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -26,16 +32,16 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
         setError('')
 
         const parsedAge = Number(age);
-        
-        if (
-            age.trim() === '' ||
-            !Number.isInteger(parsedAge) ||
-            parsedAge < 1 ||
-            parsedAge > 150
-        ) {
-            setError('Please enter a valid age between 1 and 150.');
-            return;
+        const nextFieldErrors = {
+            email: email.trim() ? '' : 'Email is required.',
+            password: password ? '' : 'Password is required.',
+            firstName: firstName.trim() ? '' : 'First name is required.',
+            lastName: lastName.trim() ? '' : 'Last name is required.',
+            age: age.trim() !== '' && Number.isInteger(parsedAge) && parsedAge >= 1 && parsedAge <= 150 ? '' : 'Please enter a valid age between 1 and 150.',
+            occupation: occupation.trim() ? '' : 'Occupation is required.',
         }
+        setFieldErrors(nextFieldErrors)
+        if (Object.values(nextFieldErrors).some(Boolean)) return
         
         setIsLoading(true)
         
@@ -74,7 +80,7 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
     }
 
     return (
-        <form className="register-form" onSubmit={handleRegister}>
+        <form className="register-form" onSubmit={handleRegister} noValidate>
             <h2>Create Account</h2>
 
             <div className="form-group">
@@ -85,9 +91,12 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                     type="email"
                     placeholder="Enter your email address"
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    onChange={(event) => updateField('email', event.target.value, setEmail)}
                     required
+                    aria-invalid={Boolean(fieldErrors.email)}
+                    aria-describedby={fieldErrors.email ? "register-email-error" : undefined}
                 />
+                {fieldErrors.email && <p className="field-error" id="register-email-error" role="alert">{fieldErrors.email}</p>}
             </div>
 
             <div className="form-group">
@@ -98,9 +107,12 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                     type="password"
                     placeholder="Create a password"
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    onChange={(event) => updateField('password', event.target.value, setPassword)}
                     required
+                    aria-invalid={Boolean(fieldErrors.password)}
+                    aria-describedby={fieldErrors.password ? "register-password-error" : undefined}
                 />
+                {fieldErrors.password && <p className="field-error" id="register-password-error" role="alert">{fieldErrors.password}</p>}
             </div>
 
             <div className="form-group">
@@ -110,9 +122,12 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                     name="firstName"
                     placeholder="Enter your first name"
                     value={firstName}
-                    onChange={(event) => setFirstName(event.target.value)}
+                    onChange={(event) => updateField('firstName', event.target.value, setFirstName)}
                     required
+                    aria-invalid={Boolean(fieldErrors.firstName)}
+                    aria-describedby={fieldErrors.firstName ? "register-first-name-error" : undefined}
                 />
+                {fieldErrors.firstName && <p className="field-error" id="register-first-name-error" role="alert">{fieldErrors.firstName}</p>}
             </div>
 
             <div className="form-group">
@@ -122,9 +137,12 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                     name="lastName"
                     placeholder="Enter your last name"
                     value={lastName}
-                    onChange={(event) => setLastName(event.target.value)}
+                    onChange={(event) => updateField('lastName', event.target.value, setLastName)}
                     required
+                    aria-invalid={Boolean(fieldErrors.lastName)}
+                    aria-describedby={fieldErrors.lastName ? "register-last-name-error" : undefined}
                 />
+                {fieldErrors.lastName && <p className="field-error" id="register-last-name-error" role="alert">{fieldErrors.lastName}</p>}
             </div>
             
             <div className="form-group age-field">
@@ -148,11 +166,9 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                         max={150}
                         step={1}
                         value={age}
-                        onChange={(event) => setAge(event.target.value)}
-                        onInvalid={(event) => {
-                            event.preventDefault()
-                            setError('Please enter a valid age between 1 and 150.')
-                        }}
+                        onChange={(event) => updateField('age', event.target.value, setAge)}
+                        aria-invalid={Boolean(fieldErrors.age)}
+                        aria-describedby={fieldErrors.age ? "register-age-error" : undefined}
                     />
                     <button
                         type="button"
@@ -164,6 +180,7 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                         <span aria-hidden="true">+</span>
                     </button>
                 </div>
+                {fieldErrors.age && <p className="field-error" id="register-age-error" role="alert">{fieldErrors.age}</p>}
             </div>
 
             <div className="form-group">
@@ -173,9 +190,12 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
                     name="occupation"
                     placeholder="e.g. Teacher"
                     value={occupation}
-                    onChange={(event) => setOccupation(event.target.value)}
+                    onChange={(event) => updateField('occupation', event.target.value, setOccupation)}
                     required
+                    aria-invalid={Boolean(fieldErrors.occupation)}
+                    aria-describedby={fieldErrors.occupation ? "register-occupation-error" : undefined}
                 />
+                {fieldErrors.occupation && <p className="field-error" id="register-occupation-error" role="alert">{fieldErrors.occupation}</p>}
             </div>
 
             <div className="form-group">

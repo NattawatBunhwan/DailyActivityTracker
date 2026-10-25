@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent, type SubmitEvent } from "react"
+import { useState, type ChangeEvent, type SubmitEvent } from "react"
 import type { Activity, ActivityPriority, ActivityStatus, UpdateActivityRequest } from "../types/activity"
 import useAuth from "../hooks/useAuth"
 import { updateActivity } from "../api/activityApi"
@@ -25,18 +25,19 @@ function toLocalDateTimeString(dateString: string): string {
 
 function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange, onUpdatingChange }: EditActivityFormProps) {
     const [title, setTitle] = useState(activity.title)
-    const initialTitle = useRef(activity.title)
+    const [initialTitle] = useState(activity.title)
     const [description, setDescription] = useState(activity.description ?? "")
-    const initialDescription = useRef(activity.description ?? "")
+    const [initialDescription] = useState(activity.description ?? "")
     const [activityDate, setActivityDate] = useState(toLocalDateTimeString(activity.activityDate))
-    const initialActivityDate = useRef(toLocalDateTimeString(activity.activityDate))
+    const [initialActivityDate] = useState(toLocalDateTimeString(activity.activityDate))
     const [status, setStatus] = useState(activity.status)
-    const initialStatus = useRef(activity.status)
+    const [initialStatus] = useState(activity.status)
     const [priority, setPriority] = useState(activity.priority)
-    const initialPriority = useRef(activity.priority)
+    const [initialPriority] = useState(activity.priority)
     const auth = useAuth()
     const [isLoading, setIsLoading] = useState(false)
     const [errorMessage, setErrorMessage] = useState("")
+    const [fieldErrors, setFieldErrors] = useState({ title: "", activityDate: "" })
 
     function checkHasUnsavedChanges(
         newTitle: string = title,
@@ -46,18 +47,18 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
         newPriority: ActivityPriority = priority
     ) {
         return (
-            newTitle !== initialTitle.current ||
-            newDescription !== initialDescription.current ||
-            newActivityDate !== initialActivityDate.current ||
-            newStatus !== initialStatus.current ||
-            newPriority !== initialPriority.current
+            newTitle !== initialTitle ||
+            newDescription !== initialDescription ||
+            newActivityDate !== initialActivityDate ||
+            newStatus !== initialStatus ||
+            newPriority !== initialPriority
         )
     }
 
     const hasUnsavedChanges = checkHasUnsavedChanges()
 
     return (
-        <form className="activity-form" onSubmit={handleSubmit}>
+        <form className="activity-form" onSubmit={handleSubmit} noValidate>
             <h2>Edit Activity</h2>
             {errorMessage && (
                 <p className="error-message" role="alert">{errorMessage}</p>
@@ -73,12 +74,16 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
                         const newTitle = e.target.value
 
                         setTitle(newTitle)
+                        if (newTitle.trim()) setFieldErrors(current => ({ ...current, title: "" }))
                         onUnsavedChangesChange(
                             checkHasUnsavedChanges(newTitle)
                         )
                     }}
                     required
+                    aria-invalid={Boolean(fieldErrors.title)}
+                    aria-describedby={fieldErrors.title ? "edit-title-error" : undefined}
                 />
+                {fieldErrors.title && <p className="field-error" id="edit-title-error" role="alert">{fieldErrors.title}</p>}
             </div>
 
             <div className="activity-form__field">
@@ -112,6 +117,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
                             const newActivityDate = e.target.value
 
                             setActivityDate(newActivityDate)
+                            if (newActivityDate) setFieldErrors(current => ({ ...current, activityDate: "" }))
                             onUnsavedChangesChange(
                                 checkHasUnsavedChanges(
                                     title,
@@ -122,6 +128,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
                         }}
                         required
                     />
+                    {fieldErrors.activityDate && <p className="field-error" id="edit-date-error" role="alert">{fieldErrors.activityDate}</p>}
                 </div>
 
                 <div className="activity-form__field">
@@ -170,6 +177,13 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
         if (isLoading) {
             return
         }
+
+        const nextFieldErrors = {
+            title: title.trim() ? "" : "Title is required.",
+            activityDate: activityDate ? "" : "Activity date is required.",
+        }
+        setFieldErrors(nextFieldErrors)
+        if (Object.values(nextFieldErrors).some(Boolean)) return
 
         if (!auth.token) {
             setErrorMessage("User is not authenticated")

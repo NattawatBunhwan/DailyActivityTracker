@@ -3,14 +3,19 @@ import { handleApiError } from "./apiError"
 
 // Activity API Functions
 export async function createActivity(request: CreateActivityRequest, token: string): Promise<Activity> {
-    const response = await fetch('https://localhost:7127/api/Activities', {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request)
-    })
+    let response: Response
+    try {
+        response = await fetch('https://localhost:7127/api/Activities', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(request)
+        })
+    } catch {
+        throw new Error("Failed to create activity.")
+    }
 
     await handleApiError(response, "Failed to create activity.")
 
@@ -76,14 +81,19 @@ export async function getActivityById(token: string, id: string): Promise<Activi
 }
 
 export async function updateActivity(token: string, activityId: string, request: UpdateActivityRequest): Promise<Activity> {
-    const response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
-        method: 'PUT',
-        headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(request)
-    })
+    let response: Response
+    try {
+        response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(request)
+        })
+    } catch {
+        throw new Error("Failed to edit activity.")
+    }
     
     await handleApiError(response, "Failed to edit activity.")
 
@@ -93,12 +103,17 @@ export async function updateActivity(token: string, activityId: string, request:
 }
 
 export async function deleteActivity(token: string, activityId: string): Promise<void> {
-    const response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
-        method: 'DELETE',
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    })
+    let response: Response
+    try {
+        response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
+            method: 'DELETE',
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        })
+    } catch {
+        throw new Error("Unable to connect to the server. Please check your internet connection and try again.")
+    }
 
     await handleApiError(response, "Failed to delete activity.")
 }

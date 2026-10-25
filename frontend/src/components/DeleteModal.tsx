@@ -123,7 +123,7 @@ function DeleteModal({ isOpen, onClose, onConfirm, children, isDeleting, deleteE
                 }
             }}
         >
-            <div className="modal">
+            <div className="modal delete-confirm-modal">
                 <button
                     type="button"
                     className="modal-close"

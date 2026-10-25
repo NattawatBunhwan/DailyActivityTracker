@@ -75,6 +75,104 @@ dialog.modal-overlay:not([open]) {
     margin-top: 16px;
 }
 
+.confirm-modal h2 {
+    margin: 0 32px 10px 0;
+    color: #111827;
+    font-size: 20px;
+}
+
+.confirm-modal p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.6;
+}
+
+.confirm-modal .confirm-cancel-button,
+.confirm-modal .confirm-action-button {
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #334155;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.confirm-modal .confirm-cancel-button:hover {
+    background: #f8fafc;
+}
+
+.confirm-modal .confirm-action-button {
+    border-color: #2563eb;
+    background: #2563eb;
+    color: #fff;
+}
+
+.confirm-modal .confirm-action-button:hover {
+    border-color: #1d4ed8;
+    background: #1d4ed8;
+}
+
+.confirm-modal button:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}
+
+.delete-confirm-modal {
+    max-width: 440px;
+    padding: 28px;
+}
+
+.delete-confirm-modal h2 {
+    margin: 0 36px 10px 0;
+    color: #111827;
+    font-size: 20px;
+}
+
+.delete-confirm-modal p {
+    margin: 0;
+    color: #475569;
+    line-height: 1.6;
+}
+
+.delete-confirm-modal .modal-actions > button {
+    min-height: 40px;
+    padding: 8px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    background: #fff;
+    color: #334155;
+    font: inherit;
+    font-weight: 600;
+}
+
+.delete-confirm-modal .modal-actions > button:hover:not(:disabled) {
+    background: #f8fafc;
+}
+
+.delete-confirm-modal .modal-actions > .delete-button {
+    border-color: #dc2626;
+    background: #dc2626;
+    color: #fff;
+}
+
+.delete-confirm-modal .modal-actions > .delete-button:hover:not(:disabled) {
+    border-color: #b91c1c;
+    background: #b91c1c;
+}
+
+.delete-confirm-modal .modal-actions > button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.delete-confirm-modal button:focus-visible {
+    outline: 2px solid #60a5fa;
+    outline-offset: 2px;
+}
+
 .delete-error {
     color: #dc2626;
     margin-top: 12px;

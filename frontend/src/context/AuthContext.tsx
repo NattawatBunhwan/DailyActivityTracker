@@ -17,6 +17,8 @@ type AuthContextType = {
     setRefreshToken: (value: string) => void
 }
 
+// The context is exported for the useAuth hook, not for component rendering.
+// eslint-disable-next-line react-refresh/only-export-components
 export const AuthContext = createContext<AuthContextType | null>(null)
 
 function AuthProvider({ children }: AuthProviderProps) {
