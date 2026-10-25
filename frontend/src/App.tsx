@@ -205,7 +205,7 @@ function App() {
       {auth.isAuthenticated ? (
         <>
           <div hidden={currentPath !== '/activities' && currentPath !== '/'}>
-            <Activities mutation={listMutation} isActive={currentPath === '/activities' || currentPath === '/'} focusActivityId={focusActivityId} onNotify={notify} onCreateActivity={() => { listScrollY.current = window.scrollY; navigate('/activities/new') }} onViewDetails={(id) => {
+            <Activities mutation={listMutation} isActive={currentPath === '/activities' || currentPath === '/'} focusActivityId={focusActivityId} onFocusActivityChange={setFocusActivityId} onNotify={notify} onCreateActivity={() => { listScrollY.current = window.scrollY; navigate('/activities/new') }} onViewDetails={(id) => {
               listScrollY.current = window.scrollY
               setFocusActivityId(id)
               navigate(`/activities/${encodeURIComponent(id)}`)

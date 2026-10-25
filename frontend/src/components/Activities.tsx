@@ -215,7 +215,7 @@ function SearchableFilterDropdown({
 
 type ActivityMutation = { kind: "create" | "update" | "delete"; id: string; nonce: number }
 
-function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isActive, focusActivityId }: { onViewDetails: (activityId: string) => void; onCreateActivity: () => void; onNotify: (message: string) => void; mutation: ActivityMutation | null; isActive: boolean; focusActivityId: string | null }) {
+function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isActive, focusActivityId, onFocusActivityChange }: { onViewDetails: (activityId: string) => void; onCreateActivity: () => void; onNotify: (message: string) => void; mutation: ActivityMutation | null; isActive: boolean; focusActivityId: string | null; onFocusActivityChange: (id: string | null) => void }) {
     const auth = useAuth()
     const [activities, setActivities] = useState<Activity[]>([])
     const [activitySummary, setActivitySummary] = useState<ActivitySummary | null>(null)
@@ -233,6 +233,7 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
     const [debouncedSearch, setDebouncedSearch] = useState("")
     const searchInputRef = useRef<HTMLInputElement | null>(null)
     const activitiesRequestIdRef = useRef(0)
+    const processedMutationNonceRef = useRef<number | null>(null)
     const [sortBy, setSortBy] = useState("createdat")
     const [descending, setDescending] = useState(true)
     const [totalPages, setTotalPages] = useState<number>(0)
@@ -267,6 +268,7 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
     const [isCancelledSummaryExpanded, setIsCancelledSummaryExpanded] = useState(false)
     const wasListActive = useRef(isActive)
     const shouldRestoreCardFocus = useRef(false)
+    const shouldScrollToRestoredCard = useRef(false)
 
     const summaryCards: {
         title: string
@@ -353,14 +355,45 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
 
     useEffect(() => {
         const mutationValue = mutation
-        if (!mutationValue || !auth.token) return
+        if (!mutationValue || !auth.token || processedMutationNonceRef.current === mutationValue.nonce) return
+        processedMutationNonceRef.current = mutationValue.nonce
         const change = mutationValue
         let cancelled = false
         async function locateMutatedRow() {
             try {
                 if (change.kind === "delete") {
-                    const first = await getActivities(auth.token, { page: 1, pageSize: 10, sortBy, descending })
-                    if (!cancelled) setPage(current => Math.max(1, Math.min(current, first.activities.totalPages || 1)))
+                    const query = {
+                        page: 1,
+                        pageSize: 10,
+                        ...(statusFilter !== "" && { status: statusFilter }),
+                        ...(priorityFilter !== "" && { priority: priorityFilter }),
+                        ...(debouncedSearch && { search: debouncedSearch }),
+                        sortBy,
+                        descending,
+                    }
+                    const first = await getActivities(auth.token, query)
+                    if (cancelled) return
+
+                    const targetPage = Math.max(1, Math.min(page, first.activities.totalPages || 1))
+                    const result = targetPage === 1
+                        ? first
+                        : await getActivities(auth.token, { ...query, page: targetPage })
+                    if (cancelled) return
+
+                    const deletedIndex = activities.findIndex(item => item.id === change.id)
+                    const fallback = deletedIndex > 0 ? activities[deletedIndex - 1] : activities[1]
+                    const focusId = result.activities.items.some(item => item.id === fallback?.id)
+                        ? fallback?.id ?? null
+                        : result.activities.items.at(-1)?.id ?? null
+
+                    setPage(targetPage)
+                    setActivities(result.activities.items)
+                    setTotalPages(result.activities.totalPages)
+                    setTotalCount(result.activities.totalCount)
+                    onFocusActivityChange(focusId)
+                    shouldRestoreCardFocus.current = true
+                    shouldScrollToRestoredCard.current = true
+                    setRefreshDeleteTrigger(previous => previous + 1)
                     return
                 }
                 const first = await getActivities(auth.token, { page: 1, pageSize: 10, sortBy, descending })
@@ -377,6 +410,9 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
             }
         }
         const timeoutId = window.setTimeout(() => {
+          if (change.kind === "delete") {
+            void locateMutatedRow()
+          } else {
             setRefreshTrigger(previous => previous + 1)
             setSearch("")
             setDebouncedSearch("")
@@ -385,9 +421,10 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
             setOpenFilterDropdownId(null)
             setPage(1)
             void locateMutatedRow()
+          }
         }, 0)
         return () => { cancelled = true; window.clearTimeout(timeoutId) }
-    }, [mutation, auth.token, sortBy, descending])
+    }, [mutation, auth.token, sortBy, descending, activities, page, onFocusActivityChange])
 
     useEffect(() => {
         if (!selectedActivityId) return
@@ -402,9 +439,10 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
         const frame = requestAnimationFrame(() => {
             const cards = Array.from(document.querySelectorAll<HTMLElement>(".activity-card--clickable"))
             const target = cards.find(card => card.dataset.activityId === focusActivityId) ?? cards[0]
-            if (target) target.focus({ preventScroll: true })
+            if (target) target.focus({ preventScroll: !shouldScrollToRestoredCard.current })
             else document.querySelector<HTMLElement>(".activity-list-header h2")?.focus({ preventScroll: true })
             shouldRestoreCardFocus.current = false
+            shouldScrollToRestoredCard.current = false
         })
         return () => cancelAnimationFrame(frame)
     }, [isActive, focusActivityId, isLoadingActivities, activities])
@@ -664,26 +702,15 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
                         !isLoadingActivities &&
                         !activitiesError &&
                         activities.length > 0 && (
-                        <>
-                            <button
-                                type="button"
-                                className="refresh-activities-button"
-                                onClick={() => loadActivities(auth.token, page)}
-                                disabled={isLoadingActivities}
-                            >
-                                {isLoadingActivities ? "Refreshing..." : "Refresh"}
-                            </button>
-
-                            <button
-                                type="button"
-                                className="create-activity-button"
-                                onClick={(event) =>
-                                    handleOpenCreateModal(event.currentTarget)
-                                }
-                            >
-                                + Create Activity
-                            </button>
-                        </>
+                        <button
+                            type="button"
+                            className="create-activity-button"
+                            onClick={(event) =>
+                                handleOpenCreateModal(event.currentTarget)
+                            }
+                        >
+                            + Create Activity
+                        </button>
                     )}
                 </div>
             </header>
@@ -852,6 +879,9 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
                                     ? "Showing activities matching the active filters"
                                     : "Showing all activities"
                                 : `Showing activities with status: ${getStatusLabel(statusFilter)}`}
+                            {hasLoadedActivities && !isLoadingActivities && !activitiesError && (
+                                <> · {totalCount} {totalCount === 1 ? "activity" : "activities"}</>
+                            )}
                         </span>
                     </p>
                 </div>
@@ -903,7 +933,7 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
                 </button>
             </header>
 
-            {!hasLoadedActivities || isLoadingActivities ? (
+            {!hasLoadedActivities || (isLoadingActivities && activities.length === 0) ? (
                 <p role="status">Loading activities...</p>
             ) : activitiesError ? (
                 <div className="activities-error">
