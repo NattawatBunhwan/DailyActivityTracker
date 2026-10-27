@@ -96,7 +96,7 @@
 .editor-date-trigger:hover, .editor-date-trigger[aria-expanded="true"] { border-color: #93c5fd; }
 .editor-date-trigger svg { flex-shrink: 0; color: #64748b; }
 .editor-date-trigger:focus-visible, .editor-calendar-header button:focus-visible, .editor-calendar-day:focus-visible, .editor-time-column button:focus-visible, .editor-time-done:focus-visible { outline: 2px solid #60a5fa; outline-offset: 2px; }
-.editor-calendar-panel, .editor-time-panel { position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 30; border: 1px solid #d1d5db; border-radius: 12px; background: #fff; box-shadow: 0 8px 18px rgb(15 23 42 / 16%); }
+.editor-calendar-panel, .editor-time-panel { position: absolute; left: 50%; bottom: calc(100% + 8px); z-index: 30; transform: translateX(-50%); border: 1px solid #d1d5db; border-radius: 12px; background: #fff; box-shadow: 0 8px 18px rgb(15 23 42 / 16%); }
 .editor-calendar-panel { width: min(340px, calc(100vw - 24px)); box-sizing: border-box; padding: 12px; }
 .editor-calendar-header { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 12px; color: #111827; font-size: 14px; }
 .editor-calendar-selects { display: flex; flex: 1 0 auto; align-items: center; justify-content: center; gap: 6px; min-width: 0; }
