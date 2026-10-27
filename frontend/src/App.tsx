@@ -4,7 +4,7 @@ import LoginForm from './components/LoginForm'
 import useAuth from './hooks/useAuth'
 import Activities from './components/Activities'
 import RegisterForm from './components/RegisterForm'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { CalendarCheck, CheckCircle2, LogOut, UserRound, UserRoundPlus } from "lucide-react"
 import ActivityDetails from './components/ActivityDetails'
 import ActivityEditor from './components/ActivityEditor'
@@ -23,7 +23,7 @@ function App() {
   const [toast, setToast] = useState('')
   const [confirmation, setConfirmation] = useState<{ title: string; message: string; confirmLabel: string } | null>(null)
   const confirmationAction = useRef<(() => void) | null>(null)
-  const confirmationTrigger = useRef<HTMLElement | null>(null)
+  const [confirmationTrigger, setConfirmationTrigger] = useState<HTMLElement | null>(null)
   const [listMutation, setListMutation] = useState<{ kind: 'create' | 'update' | 'delete'; id: string; nonce: number } | null>(null)
   const [focusActivityId, setFocusActivityId] = useState<string | null>(null)
   const mutationNonce = useRef(0)
@@ -39,17 +39,17 @@ function App() {
     toastTimer.current = window.setTimeout(() => setToast(''), 5000)
   }
 
-  function setRoute(path: string, replace = false) {
+  const setRoute = useCallback((path: string, replace = false) => {
     if (replace) window.history.replaceState(window.history.state, '', path)
     else window.history.pushState({ from: currentPathRef.current }, '', path)
     currentPathRef.current = path
     setCurrentPath(path)
     dirtyRef.current = false
-  }
+  }, [])
 
   function askConfirmation(title: string, message: string, confirmLabel: string, action: () => void) {
     confirmationAction.current = action
-    confirmationTrigger.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    setConfirmationTrigger(document.activeElement instanceof HTMLElement ? document.activeElement : null)
     setConfirmation({ title, message, confirmLabel })
   }
 
@@ -65,11 +65,11 @@ function App() {
     action?.()
   }
 
-  function navigateWithoutGuard(path: string) {
+  const navigateWithoutGuard = useCallback((path: string) => {
     if (window.history.state?.from === path || (path === '/activities' && window.history.state?.from === '/')) window.history.back()
     else setRoute(path, true)
     if (path === '/activities') requestAnimationFrame(() => window.scrollTo(0, listScrollY.current))
-  }
+  }, [setRoute])
 
   function navigateGuarded(path: string) {
     if (submittingRef.current) return
@@ -116,7 +116,7 @@ function App() {
     }
     window.addEventListener('popstate', handlePopState)
     return () => window.removeEventListener('popstate', handlePopState)
-  }, [listScrollY])
+  }, [listScrollY, setRoute])
 
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
@@ -151,7 +151,7 @@ function App() {
     }
     document.addEventListener('keydown', handleEscape, true)
     return () => document.removeEventListener('keydown', handleEscape, true)
-  }, [])
+  }, [navigateWithoutGuard, setRoute])
 
   function navigate(path: string, replace = false) {
     setRoute(path, replace)
@@ -200,7 +200,7 @@ function App() {
       </header>
 
       {toast && <div className="activity-toast-region"><div className="activity-toast" role="status"><CheckCircle2 size={19} aria-hidden="true" /><span>{toast}</span></div></div>}
-      <ConfirmDialog isOpen={confirmation !== null} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.confirmLabel ?? 'Confirm'} onCancel={cancelConfirmation} onConfirm={acceptConfirmation} triggerButton={confirmationTrigger.current} />
+      <ConfirmDialog isOpen={confirmation !== null} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.confirmLabel ?? 'Confirm'} onCancel={cancelConfirmation} onConfirm={acceptConfirmation} triggerButton={confirmationTrigger} />
 
       {auth.isAuthenticated ? (
         <>
