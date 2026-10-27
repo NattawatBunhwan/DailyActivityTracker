@@ -329,7 +329,7 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
             </button>
         )
     }
-    
+
     useEffect(() => {
         const timeoutId = window.setTimeout(() => setPage(1), 0)
         return () => window.clearTimeout(timeoutId)
@@ -412,6 +412,8 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
         const timeoutId = window.setTimeout(() => {
           if (change.kind === "delete") {
             void locateMutatedRow()
+          } else if (change.kind === "update") {
+            setRefreshTrigger(previous => previous + 1)
           } else {
             setRefreshTrigger(previous => previous + 1)
             setSearch("")

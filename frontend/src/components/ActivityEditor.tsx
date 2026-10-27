@@ -176,9 +176,9 @@ function padTime(value: number) { return String(value).padStart(2, "0") }
 
 export default function ActivityEditor({ mode, activity, onBack, onDirtyChange, onSubmittingChange, onSaved }: Props) {
     const auth = useAuth()
-    const createDefaults = useRef(new Date())
-    const defaultDay = localDate(createDefaults.current.toISOString())
-    const defaultTime = localTime(createDefaults.current.toISOString())
+    const [createDefaults] = useState(() => new Date())
+    const defaultDay = localDate(createDefaults.toISOString())
+    const defaultTime = localTime(createDefaults.toISOString())
     const [title, setTitle] = useState(activity?.title ?? "")
     const [description, setDescription] = useState(activity?.description ?? "")
     const [activityDay, setActivityDay] = useState(activity ? localDate(activity.activityDate) : defaultDay)

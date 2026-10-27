@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { logoutFromServer, refreshAccessToken } from "../api/authApi";
 
 type AuthProviderProps = {
@@ -27,7 +27,7 @@ function AuthProvider({ children }: AuthProviderProps) {
     const [refreshToken, setRefreshToken] = useState('')
     const [expiresAt, setExpiresAt] = useState('')
 
-    async function logout() {
+    const logout = useCallback(async () => {
         const activeToken = token
         const activeRefreshToken = refreshToken
 
@@ -43,7 +43,7 @@ function AuthProvider({ children }: AuthProviderProps) {
         } catch (error) {
             console.error('Logout failed:', error)
         }
-    }
+    }, [token, refreshToken])
 
     useEffect(() => {
         if (expiresAt === '' || refreshToken === '') {
@@ -82,7 +82,7 @@ function AuthProvider({ children }: AuthProviderProps) {
             }
         }
 
-    }, [expiresAt, refreshToken])
+    }, [expiresAt, refreshToken, logout])
 
     return (
         <AuthContext.Provider 
