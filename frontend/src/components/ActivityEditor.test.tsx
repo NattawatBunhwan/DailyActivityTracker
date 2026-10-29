@@ -99,6 +99,7 @@ describe('ActivityEditor', () => {
     renderEditor('create')
 
     expect((screen.getByRole('textbox', { name: 'Activity title' }) as HTMLInputElement).value).toBe('')
+    expect((screen.getByRole('textbox', { name: 'Activity title' }) as HTMLInputElement).maxLength).toBe(100)
     expect((screen.getByRole('textbox', { name: 'Description' }) as HTMLTextAreaElement).value).toBe('')
     expect(screen.getByRole('button', { name: 'Status Pending' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Priority Low' })).toBeTruthy()

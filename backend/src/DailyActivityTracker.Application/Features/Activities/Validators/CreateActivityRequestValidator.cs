@@ -10,5 +10,7 @@ public class CreateActivityRequestValidator : AbstractValidator<CreateActivityRe
         RuleFor(x => x.Title).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Description).MaximumLength(500);
         RuleFor(x => x.ActivityDate).NotEmpty();
+        RuleFor(x => x.Status).IsInEnum();
+        RuleFor(x => x.Priority).IsInEnum();
     }
 }
