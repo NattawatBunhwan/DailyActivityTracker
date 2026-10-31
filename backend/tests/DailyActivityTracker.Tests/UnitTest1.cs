@@ -409,6 +409,49 @@ public class ActivityServiceTests
         Assert.Equal("Go for a walk", result.Activities.Items[1].Title);
     }
 
+    [Fact]
+    public async Task GetAllAsync_WhenNoActivitiesFound_ReturnsZeroTotalPagesAndEmptyItems()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var query = new ActivityQueryParameters
+        {
+            Page = 1,
+            PageSize = 10
+        };
+
+        var activityRepository = new Mock<IActivityRepository>();
+        activityRepository
+            .Setup(repo => repo.GetAllByUserIdAsync(
+                userId,
+                query,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Activity>());
+
+        activityRepository
+            .Setup(repo => repo.CountByUserIdAsync(
+                userId,
+                query,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        var userRepository = new Mock<IUserRepository>();
+
+        var service = new ActivityService(
+            activityRepository.Object,
+            userRepository.Object);
+
+        // Act
+        var result = await service.GetAllAsync(userId, query);
+
+        // Assert
+        Assert.Equal(1, result.Activities.Page);
+        Assert.Equal(10, result.Activities.PageSize);
+        Assert.Equal(0, result.Activities.TotalCount);
+        Assert.Equal(0, result.Activities.TotalPages);
+        Assert.Empty(result.Activities.Items);
+    }
+
 public class ActivityValidatorTests
 {
     private readonly CreateActivityRequestValidator _createValidator = new();
