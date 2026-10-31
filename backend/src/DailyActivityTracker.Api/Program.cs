@@ -67,6 +67,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+var jwtSecretKey = JwtSettingsValidator.ValidateSecretKey(builder.Configuration["JwtSettings:SecretKey"]);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -82,8 +83,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(
-                    builder.Configuration["JwtSettings:SecretKey"]!))
+                Encoding.UTF8.GetBytes(jwtSecretKey))
         };
     });
 builder.Services.AddAuthorization(options =>
