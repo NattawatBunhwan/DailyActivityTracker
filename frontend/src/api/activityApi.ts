@@ -1,19 +1,20 @@
 import type { Activity, ActivitiesResponse, CreateActivityRequest, UpdateActivityRequest, ActivityQuery, ActivitySummary } from "../types/activity"
 import { handleApiError } from "./apiError"
 import { API_BASE_URL } from "./config"
+import { authenticatedFetch } from "./httpClient"
 
 // Activity API Functions
 export async function createActivity(request: CreateActivityRequest, token: string): Promise<Activity> {
     let response: Response
     try {
-        response = await fetch(`${API_BASE_URL}/api/Activities`, {
+        response = await authenticatedFetch(`${API_BASE_URL}/api/Activities`, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(request)
-        })
+        }, token)
     } catch {
         throw new Error("Failed to create activity.")
     }
@@ -49,14 +50,15 @@ export async function getActivities(token: string, query: ActivityQuery = {}): P
         params.set('Descending', String(query.descending ?? false))
     }
 
-    const response = await fetch(
+    const response = await authenticatedFetch(
         `${API_BASE_URL}/api/Activities?${params.toString()}`,
         {
             method: 'GET',
             headers: {
                 Authorization: `Bearer ${token}`,
             },
-        }
+        },
+        token
     )
 
     await handleApiError(response, "Failed to load activities.")
@@ -67,12 +69,12 @@ export async function getActivities(token: string, query: ActivityQuery = {}): P
 }
 
 export async function getActivityById(token: string, id: string): Promise<Activity> {
-    const response = await fetch(`${API_BASE_URL}/api/Activities/${id}`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/Activities/${id}`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,
         }
-    })
+    }, token)
 
     await handleApiError(response, "Failed to load activity.")
 
@@ -84,14 +86,14 @@ export async function getActivityById(token: string, id: string): Promise<Activi
 export async function updateActivity(token: string, activityId: string, request: UpdateActivityRequest): Promise<Activity> {
     let response: Response
     try {
-        response = await fetch(`${API_BASE_URL}/api/Activities/${activityId}`, {
+        response = await authenticatedFetch(`${API_BASE_URL}/api/Activities/${activityId}`, {
             method: 'PUT',
             headers: {
                 Authorization: `Bearer ${token}`,
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(request)
-        })
+        }, token)
     } catch {
         throw new Error("Failed to edit activity.")
     }
@@ -106,12 +108,12 @@ export async function updateActivity(token: string, activityId: string, request:
 export async function deleteActivity(token: string, activityId: string): Promise<void> {
     let response: Response
     try {
-        response = await fetch(`${API_BASE_URL}/api/Activities/${activityId}`, {
+        response = await authenticatedFetch(`${API_BASE_URL}/api/Activities/${activityId}`, {
             method: 'DELETE',
             headers: {
                 Authorization: `Bearer ${token}`
             }
-        })
+        }, token)
     } catch {
         throw new Error("Unable to connect to the server. Please check your internet connection and try again.")
     }
@@ -120,12 +122,12 @@ export async function deleteActivity(token: string, activityId: string): Promise
 }
 
 export async function getActivitySummary(token: string): Promise<ActivitySummary> {
-    const response = await fetch(`${API_BASE_URL}/api/Activities/summary`, {
+    const response = await authenticatedFetch(`${API_BASE_URL}/api/Activities/summary`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`
         },
-    })
+    }, token)
 
     await handleApiError(response, "Failed to load activity summary.")
 
