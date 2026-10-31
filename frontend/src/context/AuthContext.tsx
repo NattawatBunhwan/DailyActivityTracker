@@ -29,7 +29,9 @@ function AuthProvider({ children }: AuthProviderProps) {
     const [expiresAt, setExpiresAt] = useState('')
 
     const refreshTokenRef = useRef(refreshToken)
-    refreshTokenRef.current = refreshToken
+    useEffect(() => {
+        refreshTokenRef.current = refreshToken
+    }, [refreshToken])
 
     const logout = useCallback(async () => {
         const activeToken = token

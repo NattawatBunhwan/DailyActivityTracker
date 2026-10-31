@@ -353,13 +353,20 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
         loadActivitySummary(auth.token)
     }, [auth.token, refreshTrigger, refreshUpdateTrigger, refreshDeleteTrigger])
 
+    const mutationContextRef = useRef({ activities, page, statusFilter, priorityFilter, debouncedSearch, sortBy, descending, onFocusActivityChange })
+    useEffect(() => {
+        mutationContextRef.current = { activities, page, statusFilter, priorityFilter, debouncedSearch, sortBy, descending, onFocusActivityChange }
+    }, [activities, page, statusFilter, priorityFilter, debouncedSearch, sortBy, descending, onFocusActivityChange])
+
     useEffect(() => {
         const mutationValue = mutation
         if (!mutationValue || !auth.token || processedMutationNonceRef.current === mutationValue.nonce) return
         processedMutationNonceRef.current = mutationValue.nonce
         const change = mutationValue
         let cancelled = false
+        let finished = false
         async function locateMutatedRow() {
+            const { activities, page, statusFilter, priorityFilter, debouncedSearch, sortBy, descending, onFocusActivityChange } = mutationContextRef.current
             try {
                 if (change.kind === "delete") {
                     const query = {
@@ -407,6 +414,8 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
                 }
             } catch {
                 // Keep the default first page visible if positioning the changed row fails.
+            } finally {
+                if (!cancelled) finished = true
             }
         }
         const timeoutId = window.setTimeout(() => {
@@ -414,6 +423,7 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
             void locateMutatedRow()
           } else if (change.kind === "update") {
             setRefreshTrigger(previous => previous + 1)
+            finished = true
           } else {
             setRefreshTrigger(previous => previous + 1)
             setSearch("")
@@ -425,8 +435,12 @@ function Activities({ onViewDetails, onCreateActivity, onNotify, mutation, isAct
             void locateMutatedRow()
           }
         }, 0)
-        return () => { cancelled = true; window.clearTimeout(timeoutId) }
-    }, [mutation, auth.token, sortBy, descending, activities, page, onFocusActivityChange])
+        return () => {
+            cancelled = true
+            window.clearTimeout(timeoutId)
+            if (!finished && processedMutationNonceRef.current === change.nonce) processedMutationNonceRef.current = null
+        }
+    }, [mutation, auth.token])
 
     useEffect(() => {
         if (!selectedActivityId) return
