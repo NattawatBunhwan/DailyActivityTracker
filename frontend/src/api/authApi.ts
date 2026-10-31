@@ -1,4 +1,5 @@
 import { handleApiError } from "./apiError"
+import { API_BASE_URL } from "./config"
 
 type LoginRequest = {
     email: string
@@ -29,7 +30,7 @@ type RegisterResponse = {
 }
 
 export async function register(request: RegisterRequest): Promise<RegisterResponse> {
-    const response = await fetch('https://localhost:7127/api/users', {
+    const response = await fetch(`${API_BASE_URL}/api/users`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -45,7 +46,7 @@ export async function register(request: RegisterRequest): Promise<RegisterRespon
 }
 
 export async function login({ email, password }: LoginRequest): Promise<AuthResponse> {
-    const response = await fetch('https://localhost:7127/api/Auth/login', {
+    const response = await fetch(`${API_BASE_URL}/api/Auth/login`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -64,7 +65,7 @@ export async function login({ email, password }: LoginRequest): Promise<AuthResp
 }
 
 export async function refreshAccessToken(refreshToken: string): Promise<AuthResponse> {
-    const response = await fetch('https://localhost:7127/api/Auth/refresh', {
+    const response = await fetch(`${API_BASE_URL}/api/Auth/refresh`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -82,7 +83,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResp
 }
 
 export async function logoutFromServer(token: string, refreshToken: string) {
-    const response = await fetch('https://localhost:7127/api/Auth/logout', {
+    const response = await fetch(`${API_BASE_URL}/api/Auth/logout`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

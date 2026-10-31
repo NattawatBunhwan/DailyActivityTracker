@@ -46,6 +46,7 @@ function CreateActivityForm({ onActivityCreated, onCreatingChange }: CreateActiv
                     value={formData.title} 
                     onChange={event => { setFormData({...formData, title: event.target.value}); if (event.target.value.trim()) setFieldErrors(current => ({ ...current, title: "" })) }} 
                     id="title"
+                    maxLength={100}
                     required
                     aria-invalid={Boolean(fieldErrors.title)}
                     aria-describedby={fieldErrors.title ? "create-title-error" : undefined}

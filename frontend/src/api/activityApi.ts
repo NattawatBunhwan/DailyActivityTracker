@@ -1,11 +1,12 @@
 import type { Activity, ActivitiesResponse, CreateActivityRequest, UpdateActivityRequest, ActivityQuery, ActivitySummary } from "../types/activity"
 import { handleApiError } from "./apiError"
+import { API_BASE_URL } from "./config"
 
 // Activity API Functions
 export async function createActivity(request: CreateActivityRequest, token: string): Promise<Activity> {
     let response: Response
     try {
-        response = await fetch('https://localhost:7127/api/Activities', {
+        response = await fetch(`${API_BASE_URL}/api/Activities`, {
             method: 'POST',
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -49,7 +50,7 @@ export async function getActivities(token: string, query: ActivityQuery = {}): P
     }
 
     const response = await fetch(
-        `https://localhost:7127/api/Activities?${params.toString()}`,
+        `${API_BASE_URL}/api/Activities?${params.toString()}`,
         {
             method: 'GET',
             headers: {
@@ -66,7 +67,7 @@ export async function getActivities(token: string, query: ActivityQuery = {}): P
 }
 
 export async function getActivityById(token: string, id: string): Promise<Activity> {
-    const response = await fetch(`https://localhost:7127/api/Activities/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/Activities/${id}`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`,
@@ -83,7 +84,7 @@ export async function getActivityById(token: string, id: string): Promise<Activi
 export async function updateActivity(token: string, activityId: string, request: UpdateActivityRequest): Promise<Activity> {
     let response: Response
     try {
-        response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
+        response = await fetch(`${API_BASE_URL}/api/Activities/${activityId}`, {
             method: 'PUT',
             headers: {
                 Authorization: `Bearer ${token}`,
@@ -105,7 +106,7 @@ export async function updateActivity(token: string, activityId: string, request:
 export async function deleteActivity(token: string, activityId: string): Promise<void> {
     let response: Response
     try {
-        response = await fetch(`https://localhost:7127/api/Activities/${activityId}`, {
+        response = await fetch(`${API_BASE_URL}/api/Activities/${activityId}`, {
             method: 'DELETE',
             headers: {
                 Authorization: `Bearer ${token}`
@@ -119,7 +120,7 @@ export async function deleteActivity(token: string, activityId: string): Promise
 }
 
 export async function getActivitySummary(token: string): Promise<ActivitySummary> {
-    const response = await fetch('https://localhost:7127/api/Activities/summary', {
+    const response = await fetch(`${API_BASE_URL}/api/Activities/summary`, {
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`

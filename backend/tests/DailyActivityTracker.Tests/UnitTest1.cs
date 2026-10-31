@@ -1,3 +1,5 @@
+﻿using DailyActivityTracker.Infrastructure.Persistence.Repositories;
+using DailyActivityTracker.Application.Features.Activities.Validators;
 using DailyActivityTracker.Application.Exceptions;
 using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Application.Features.Activities.Services;
@@ -398,12 +400,356 @@ public class ActivityServiceTests
         var result = await service.GetAllAsync(userId, query);
 
         // Assert
-        Assert.Equal(1, result.Page);
-        Assert.Equal(10, result.PageSize);
-        Assert.Equal(2, result.TotalCount);
-        Assert.Equal(1, result.TotalPages);
-        Assert.Equal(2, result.Items.Count);
-        Assert.Equal("Read a book", result.Items[0].Title);
-        Assert.Equal("Go for a walk", result.Items[1].Title);
+        Assert.Equal(1, result.Activities.Page);
+        Assert.Equal(10, result.Activities.PageSize);
+        Assert.Equal(2, result.Activities.TotalCount);
+        Assert.Equal(1, result.Activities.TotalPages);
+        Assert.Equal(2, result.Activities.Items.Count);
+        Assert.Equal("Read a book", result.Activities.Items[0].Title);
+        Assert.Equal("Go for a walk", result.Activities.Items[1].Title);
     }
+
+    [Fact]
+    public async Task GetAllAsync_WhenNoActivitiesFound_ReturnsZeroTotalPagesAndEmptyItems()
+    {
+        // Arrange
+        var userId = Guid.NewGuid();
+        var query = new ActivityQueryParameters
+        {
+            Page = 1,
+            PageSize = 10
+        };
+
+        var activityRepository = new Mock<IActivityRepository>();
+        activityRepository
+            .Setup(repo => repo.GetAllByUserIdAsync(
+                userId,
+                query,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<Activity>());
+
+        activityRepository
+            .Setup(repo => repo.CountByUserIdAsync(
+                userId,
+                query,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        var userRepository = new Mock<IUserRepository>();
+
+        var service = new ActivityService(
+            activityRepository.Object,
+            userRepository.Object);
+
+        // Act
+        var result = await service.GetAllAsync(userId, query);
+
+        // Assert
+        Assert.Equal(1, result.Activities.Page);
+        Assert.Equal(10, result.Activities.PageSize);
+        Assert.Equal(0, result.Activities.TotalCount);
+        Assert.Equal(0, result.Activities.TotalPages);
+        Assert.Empty(result.Activities.Items);
+    }
+
+public class ActivityValidatorTests
+{
+    private readonly CreateActivityRequestValidator _createValidator = new();
+    private readonly UpdateActivityRequestValidator _updateValidator = new();
+
+    [Fact]
+    public void CreateActivityRequestValidator_WhenTitleIs100Characters_ShouldBeValid()
+    {
+        var request = new CreateActivityRequest
+        {
+            Title = new string('a', 100),
+            Description = "Test description",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = ActivityPriority.Low
+        };
+
+        var result = _createValidator.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void CreateActivityRequestValidator_WhenTitleIs101Characters_ShouldBeInvalid()
+    {
+        var request = new CreateActivityRequest
+        {
+            Title = new string('a', 101),
+            Description = "Test description",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = ActivityPriority.Low
+        };
+
+        var result = _createValidator.Validate(request);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateActivityRequest.Title));
+    }
+
+    [Fact]
+    public void UpdateActivityRequestValidator_WhenTitleIs100Characters_ShouldBeValid()
+    {
+        var request = new UpdateActivityRequest
+        {
+            Title = new string('a', 100),
+            Description = "Test description",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = ActivityPriority.Low
+        };
+
+        var result = _updateValidator.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Fact]
+    public void UpdateActivityRequestValidator_WhenTitleIs101Characters_ShouldBeInvalid()
+    {
+        var request = new UpdateActivityRequest
+        {
+            Title = new string('a', 101),
+            Description = "Test description",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = ActivityPriority.Low
+        };
+
+        var result = _updateValidator.Validate(request);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateActivityRequest.Title));
+    }
+
+    [Theory]
+    [InlineData(ActivityStatus.Pending)]
+    [InlineData(ActivityStatus.InProgress)]
+    [InlineData(ActivityStatus.Completed)]
+    [InlineData(ActivityStatus.Cancelled)]
+    public void CreateActivityRequestValidator_WhenStatusIsValidEnum_ShouldBeValid(ActivityStatus status)
+    {
+        var request = new CreateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = status,
+            Priority = ActivityPriority.Medium
+        };
+
+        var result = _createValidator.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData((ActivityStatus)0)]
+    [InlineData((ActivityStatus)99)]
+    public void CreateActivityRequestValidator_WhenStatusIsUndefinedEnum_ShouldBeInvalid(ActivityStatus status)
+    {
+        var request = new CreateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = status,
+            Priority = ActivityPriority.Medium
+        };
+
+        var result = _createValidator.Validate(request);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateActivityRequest.Status));
+    }
+
+    [Theory]
+    [InlineData(ActivityPriority.Low)]
+    [InlineData(ActivityPriority.Medium)]
+    [InlineData(ActivityPriority.High)]
+    public void CreateActivityRequestValidator_WhenPriorityIsValidEnum_ShouldBeValid(ActivityPriority priority)
+    {
+        var request = new CreateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = priority
+        };
+
+        var result = _createValidator.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData((ActivityPriority)0)]
+    [InlineData((ActivityPriority)99)]
+    public void CreateActivityRequestValidator_WhenPriorityIsUndefinedEnum_ShouldBeInvalid(ActivityPriority priority)
+    {
+        var request = new CreateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = priority
+        };
+
+        var result = _createValidator.Validate(request);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(CreateActivityRequest.Priority));
+    }
+
+    [Theory]
+    [InlineData(ActivityStatus.Pending)]
+    [InlineData(ActivityStatus.InProgress)]
+    [InlineData(ActivityStatus.Completed)]
+    [InlineData(ActivityStatus.Cancelled)]
+    public void UpdateActivityRequestValidator_WhenStatusIsValidEnum_ShouldBeValid(ActivityStatus status)
+    {
+        var request = new UpdateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = status,
+            Priority = ActivityPriority.Medium
+        };
+
+        var result = _updateValidator.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData((ActivityStatus)0)]
+    [InlineData((ActivityStatus)99)]
+    public void UpdateActivityRequestValidator_WhenStatusIsUndefinedEnum_ShouldBeInvalid(ActivityStatus status)
+    {
+        var request = new UpdateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = status,
+            Priority = ActivityPriority.Medium
+        };
+
+        var result = _updateValidator.Validate(request);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateActivityRequest.Status));
+    }
+
+    [Theory]
+    [InlineData(ActivityPriority.Low)]
+    [InlineData(ActivityPriority.Medium)]
+    [InlineData(ActivityPriority.High)]
+    public void UpdateActivityRequestValidator_WhenPriorityIsValidEnum_ShouldBeValid(ActivityPriority priority)
+    {
+        var request = new UpdateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = priority
+        };
+
+        var result = _updateValidator.Validate(request);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData((ActivityPriority)0)]
+    [InlineData((ActivityPriority)99)]
+    public void UpdateActivityRequestValidator_WhenPriorityIsUndefinedEnum_ShouldBeInvalid(ActivityPriority priority)
+    {
+        var request = new UpdateActivityRequest
+        {
+            Title = "Valid Title",
+            ActivityDate = DateTime.UtcNow,
+            Status = ActivityStatus.Pending,
+            Priority = priority
+        };
+
+        var result = _updateValidator.Validate(request);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateActivityRequest.Priority));
+    }
+}
+
+public class ActivityRepositorySearchEscapingTests
+{
+    [Theory]
+    [InlineData("ordinary text", "ordinary text")]
+    [InlineData("running 10k", "running 10k")]
+    [InlineData("Clean Code", "Clean Code")]
+    public void EscapeLikePattern_WhenInputIsOrdinaryText_ReturnsUnchanged(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("50%", "50\\%")]
+    [InlineData("100% complete", "100\\% complete")]
+    [InlineData("%leading", "\\%leading")]
+    [InlineData("double%%percent", "double\\%\\%percent")]
+    public void EscapeLikePattern_WhenInputContainsPercent_EscapesPercentSign(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("user_name", "user\\_name")]
+    [InlineData("Work_Log", "Work\\_Log")]
+    [InlineData("_prefix", "\\_prefix")]
+    [InlineData("a_b_c", "a\\_b\\_c")]
+    public void EscapeLikePattern_WhenInputContainsUnderscore_EscapesUnderscore(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("folder\\file", "folder\\\\file")]
+    [InlineData("C:\\Users\\test", "C:\\\\Users\\\\test")]
+    [InlineData("multiple\\\\backslashes", "multiple\\\\\\\\backslashes")]
+    public void EscapeLikePattern_WhenInputContainsBackslash_EscapesBackslash(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("search\\", "search\\\\")]
+    [InlineData("\\", "\\\\")]
+    [InlineData("path\\to\\", "path\\\\to\\\\")]
+    public void EscapeLikePattern_WhenInputEndsWithBackslash_EscapesTrailingBackslash(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void EscapeLikePattern_WhenInputContainsMixedSpecialCharacters_EscapesInCorrectOrder()
+    {
+        var input = "100%_done\\task";
+        var expected = "100\\%\\_done\\\\task";
+
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+}
 }

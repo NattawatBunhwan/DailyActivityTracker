@@ -264,7 +264,7 @@ export default function ActivityEditor({ mode, activity, onBack, onDirtyChange, 
                     <h1 className="editor-page-heading">{mode === "create" ? "Create Activity" : "Edit Activity"}</h1>
                     <div className="details-title-group">
                         <label className="editor-title-label" htmlFor="editor-title">Activity title
-                            <input id="editor-title" className="editor-title-input" value={title} onChange={e => { setTitle(e.target.value); if (e.target.value.trim()) setFieldErrors(current => ({ ...current, title: "" })) }} required maxLength={200} aria-invalid={Boolean(fieldErrors.title)} aria-describedby={fieldErrors.title ? "editor-title-error" : undefined} />
+                            <input id="editor-title" className="editor-title-input" value={title} onChange={e => { setTitle(e.target.value); if (e.target.value.trim()) setFieldErrors(current => ({ ...current, title: "" })) }} required maxLength={100} aria-invalid={Boolean(fieldErrors.title)} aria-describedby={fieldErrors.title ? "editor-title-error" : undefined} />
                             {fieldErrors.title && <p className="field-error editor-field-error" id="editor-title-error" role="alert">{fieldErrors.title}</p>}
                         </label>
                         <div className={`editor-choice-field editor-status-field${openChoice === "status" ? " is-open" : ""}`}>

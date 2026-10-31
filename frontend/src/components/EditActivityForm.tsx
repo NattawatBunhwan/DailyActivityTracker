@@ -70,6 +70,7 @@ function EditActivityForm({ activity, onActivityUpdated, onUnsavedChangesChange,
                     type="text"
                     value={title}
                     id="edit-title"
+                    maxLength={100}
                     onChange={(e) => {
                         const newTitle = e.target.value
 
