@@ -49,22 +49,24 @@ public class ActivityRepository : IActivityRepository
         var activities = _dbContext.Activities
             .Where(activity => activity.UserId == userId);
 
-        // ¡ÃÍ§´éÇÂ Priority áµèäÁè¡ÃÍ§´éÇÂ Status
+        // ï¿½ï¿½Í§ï¿½ï¿½ï¿½ï¿½ Priority ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í§ï¿½ï¿½ï¿½ï¿½ Status
         if (query.Priority.HasValue)
         {
             activities = activities.Where(
                 activity => activity.Priority == query.Priority.Value);
         }
 
-        // ãªé Search àËÁ×Í¹¡ÑºÃÒÂ¡ÒÃ¡Ô¨¡ÃÃÁ
+        // ï¿½ï¿½ Search ï¿½ï¿½ï¿½ï¿½Í¹ï¿½Ñºï¿½ï¿½Â¡ï¿½Ã¡Ô¨ï¿½ï¿½ï¿½ï¿½
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
+            var searchPattern = $"%{EscapeLikePattern(query.Search.Trim())}%";
+
             activities = activities.Where(activity =>
-                EF.Functions.ILike(activity.Title, $"%{query.Search}%") ||
+                EF.Functions.ILike(activity.Title, searchPattern) ||
                 (activity.Description != null &&
                  EF.Functions.ILike(
                      activity.Description,
-                     $"%{query.Search}%")));
+                     searchPattern)));
         }
 
         return activities
@@ -79,22 +81,24 @@ public class ActivityRepository : IActivityRepository
         var activities = _dbContext.Activities
             .Where(activity => activity.UserId == userId);
 
-        // ¡ÃÍ§´éÇÂ Status áµèäÁè¡ÃÍ§´éÇÂ Priority
+        // ï¿½ï¿½Í§ï¿½ï¿½ï¿½ï¿½ Status ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Í§ï¿½ï¿½ï¿½ï¿½ Priority
         if (query.Status.HasValue)
         {
             activities = activities.Where(
                 activity => activity.Status == query.Status.Value);
         }
 
-        // ãªé Search àËÁ×Í¹¡ÑºÃÒÂ¡ÒÃ¡Ô¨¡ÃÃÁ
+        // ï¿½ï¿½ Search ï¿½ï¿½ï¿½ï¿½Í¹ï¿½Ñºï¿½ï¿½Â¡ï¿½Ã¡Ô¨ï¿½ï¿½ï¿½ï¿½
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
+            var searchPattern = $"%{EscapeLikePattern(query.Search.Trim())}%";
+
             activities = activities.Where(activity =>
-                EF.Functions.ILike(activity.Title, $"%{query.Search}%") ||
+                EF.Functions.ILike(activity.Title, searchPattern) ||
                 (activity.Description != null &&
                  EF.Functions.ILike(
                      activity.Description,
-                     $"%{query.Search}%")));
+                     searchPattern)));
         }
 
         return activities
@@ -158,10 +162,19 @@ public class ActivityRepository : IActivityRepository
 
         if (!string.IsNullOrWhiteSpace(query.Search))
         {
-            activities = activities.Where(x => EF.Functions.ILike(x.Title, $"%{query.Search}%") || (x.Description != null && EF.Functions.ILike(x.Description, $"%{query.Search}%")));
+            var searchPattern = $"%{EscapeLikePattern(query.Search.Trim())}%";
+            activities = activities.Where(x => EF.Functions.ILike(x.Title, searchPattern) || (x.Description != null && EF.Functions.ILike(x.Description, searchPattern)));
         }
 
         return activities;
+    }
+
+    public static string EscapeLikePattern(string input)
+    {
+        return input
+            .Replace(@"\", @"\\")
+            .Replace(@"%", @"\%")
+            .Replace(@"_", @"\_");
     }
 
     private IQueryable<Activity> ApplySorting(IQueryable<Activity> activities, ActivityQueryParameters query)

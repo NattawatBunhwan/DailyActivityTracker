@@ -1,4 +1,5 @@
-﻿using DailyActivityTracker.Application.Features.Activities.Validators;
+﻿using DailyActivityTracker.Infrastructure.Persistence.Repositories;
+using DailyActivityTracker.Application.Features.Activities.Validators;
 using DailyActivityTracker.Application.Exceptions;
 using DailyActivityTracker.Application.Features.Activities.DTOs;
 using DailyActivityTracker.Application.Features.Activities.Services;
@@ -635,6 +636,77 @@ public class ActivityValidatorTests
 
         Assert.False(result.IsValid);
         Assert.Contains(result.Errors, e => e.PropertyName == nameof(UpdateActivityRequest.Priority));
+    }
+}
+
+public class ActivityRepositorySearchEscapingTests
+{
+    [Theory]
+    [InlineData("ordinary text", "ordinary text")]
+    [InlineData("running 10k", "running 10k")]
+    [InlineData("Clean Code", "Clean Code")]
+    public void EscapeLikePattern_WhenInputIsOrdinaryText_ReturnsUnchanged(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("50%", "50\\%")]
+    [InlineData("100% complete", "100\\% complete")]
+    [InlineData("%leading", "\\%leading")]
+    [InlineData("double%%percent", "double\\%\\%percent")]
+    public void EscapeLikePattern_WhenInputContainsPercent_EscapesPercentSign(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("user_name", "user\\_name")]
+    [InlineData("Work_Log", "Work\\_Log")]
+    [InlineData("_prefix", "\\_prefix")]
+    [InlineData("a_b_c", "a\\_b\\_c")]
+    public void EscapeLikePattern_WhenInputContainsUnderscore_EscapesUnderscore(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("folder\\file", "folder\\\\file")]
+    [InlineData("C:\\Users\\test", "C:\\\\Users\\\\test")]
+    [InlineData("multiple\\\\backslashes", "multiple\\\\\\\\backslashes")]
+    public void EscapeLikePattern_WhenInputContainsBackslash_EscapesBackslash(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Theory]
+    [InlineData("search\\", "search\\\\")]
+    [InlineData("\\", "\\\\")]
+    [InlineData("path\\to\\", "path\\\\to\\\\")]
+    public void EscapeLikePattern_WhenInputEndsWithBackslash_EscapesTrailingBackslash(string input, string expected)
+    {
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void EscapeLikePattern_WhenInputContainsMixedSpecialCharacters_EscapesInCorrectOrder()
+    {
+        var input = "100%_done\\task";
+        var expected = "100\\%\\_done\\\\task";
+
+        var result = ActivityRepository.EscapeLikePattern(input);
+
+        Assert.Equal(expected, result);
     }
 }
 }
