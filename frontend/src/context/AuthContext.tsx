@@ -1,5 +1,6 @@
-import { createContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { logoutFromServer, refreshAccessToken } from "../api/authApi";
+import { setAuthSessionCallbacks, setLatestAccessToken } from "../api/httpClient";
 
 type AuthProviderProps = {
     children: ReactNode
@@ -27,6 +28,11 @@ function AuthProvider({ children }: AuthProviderProps) {
     const [refreshToken, setRefreshToken] = useState('')
     const [expiresAt, setExpiresAt] = useState('')
 
+    const refreshTokenRef = useRef(refreshToken)
+    useEffect(() => {
+        refreshTokenRef.current = refreshToken
+    }, [refreshToken])
+
     const logout = useCallback(async () => {
         const activeToken = token
         const activeRefreshToken = refreshToken
@@ -37,6 +43,7 @@ function AuthProvider({ children }: AuthProviderProps) {
         setToken('')
         setExpiresAt('')
         setRefreshToken('')
+        setLatestAccessToken(null)
 
         try {
             await logoutFromServer(activeToken, activeRefreshToken)
@@ -44,6 +51,28 @@ function AuthProvider({ children }: AuthProviderProps) {
             console.error('Logout failed:', error)
         }
     }, [token, refreshToken])
+
+    useEffect(() => {
+        setLatestAccessToken(token || null)
+    }, [token])
+
+    useEffect(() => {
+        setAuthSessionCallbacks({
+            getRefreshToken: () => refreshTokenRef.current,
+            onSessionRefreshed: (data) => {
+                setToken(data.token)
+                setExpiresAt(data.expiresAt)
+                setRefreshToken(data.refreshToken)
+            },
+            onSessionExpired: () => {
+                void logout()
+            },
+        })
+
+        return () => {
+            setAuthSessionCallbacks(null)
+        }
+    }, [logout])
 
     useEffect(() => {
         if (expiresAt === '' || refreshToken === '') {

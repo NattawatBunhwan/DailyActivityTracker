@@ -67,6 +67,7 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+var jwtSecretKey = JwtSettingsValidator.ValidateSecretKey(builder.Configuration["JwtSettings:SecretKey"]);
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -82,20 +83,22 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
             ValidateIssuerSigningKey = true,
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(
-                    builder.Configuration["JwtSettings:SecretKey"]!))
+                Encoding.UTF8.GetBytes(jwtSecretKey))
         };
     });
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthorizationPolicies.AdminOnly, policy => policy.RequireRole(Roles.Admin));
 });
+var corsAllowedOrigins = CorsSettingsValidator.ValidateAllowedOrigins(
+    builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>());
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("Frontend", policy =>
     {
         policy
-            .WithOrigins("http://localhost:5173")
+            .WithOrigins(corsAllowedOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
