@@ -1,0 +1,259 @@
+using DailyActivityTracker.Application.Common;
+using DailyActivityTracker.Application.DTOs.Auth;
+using DailyActivityTracker.Application.Exceptions;
+using DailyActivityTracker.Application.Interfaces.Repositories;
+using DailyActivityTracker.Application.Interfaces.Security;
+using DailyActivityTracker.Application.Interfaces.Services;
+using DailyActivityTracker.Domain.Entities;
+using System.Security.Cryptography;
+
+namespace DailyActivityTracker.Application.Services;
+
+public class AuthService : IAuthService
+{
+    private readonly IUserRepository _userRepository;
+
+    private readonly IJwtTokenGenerator _jwtTokenGenerator;
+
+    private readonly IRefreshTokenRepository _refreshTokenRepository;
+
+    private readonly ICurrentUserService _currentUserService;
+
+    private readonly IAuditLogService? _auditLogService;
+
+    public AuthService(
+        IUserRepository userRepository,
+        IJwtTokenGenerator jwtTokenGenerator,
+        IRefreshTokenRepository refreshTokenRepository,
+        ICurrentUserService currentUserService,
+        IAuditLogService? auditLogService = null)
+    {
+        _userRepository = userRepository;
+        _jwtTokenGenerator = jwtTokenGenerator;
+        _refreshTokenRepository = refreshTokenRepository;
+        _currentUserService = currentUserService;
+        _auditLogService = auditLogService;
+    }
+
+    public async Task<LoginResponse> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var normalizedEmail = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+        var auditedEmail = string.IsNullOrWhiteSpace(normalizedEmail) ? null : normalizedEmail;
+
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail, cancellationToken);
+
+        if (user is null)
+        {
+            if (_auditLogService is not null)
+            {
+                await _auditLogService.RecordAuthenticationEventAsync(
+                    AuthenticationAuditActions.LoginFailed,
+                    userId: null,
+                    actorEmail: auditedEmail,
+                    actorRole: null,
+                    reason: "InvalidCredentials",
+                    cancellationToken: cancellationToken);
+            }
+
+            throw new InvalidCredentialsException();
+        }
+
+        bool isValidPassword = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+
+        if (!isValidPassword)
+        {
+            if (_auditLogService is not null)
+            {
+                await _auditLogService.RecordAuthenticationEventAsync(
+                    AuthenticationAuditActions.LoginFailed,
+                    userId: null,
+                    actorEmail: auditedEmail,
+                    actorRole: null,
+                    reason: "InvalidCredentials",
+                    cancellationToken: cancellationToken);
+            }
+
+            throw new InvalidCredentialsException();
+        }
+
+        var tokenResult = _jwtTokenGenerator.GenerateToken(user);
+
+        var refreshTokenValue = GenerateRefreshToken();
+
+        var refreshToken = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = refreshTokenValue,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false
+        };
+
+        await _refreshTokenRepository.AddAsync(refreshToken, cancellationToken);
+        await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+
+        if (_auditLogService is not null)
+        {
+            await _auditLogService.RecordAuthenticationEventAsync(
+                AuthenticationAuditActions.LoginSucceeded,
+                userId: user.Id,
+                actorEmail: user.Email,
+                actorRole: user.Role,
+                reason: null,
+                cancellationToken: cancellationToken);
+        }
+
+        return new LoginResponse
+        {
+            Token = tokenResult.Token,
+            ExpiresAt = tokenResult.ExpiresAt,
+            RefreshToken = refreshTokenValue
+        };
+    }
+
+    public async Task<LoginResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
+    {
+        var refreshToken = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
+
+        if (refreshToken is null)
+        {
+            if (_auditLogService is not null)
+            {
+                await _auditLogService.RecordAuthenticationEventAsync(
+                    AuthenticationAuditActions.TokenRefreshFailed,
+                    userId: null,
+                    actorEmail: null,
+                    actorRole: null,
+                    reason: "InvalidOrExpiredToken",
+                    cancellationToken: cancellationToken);
+            }
+
+            throw new RefreshTokenExpiredException();
+        }
+
+        if (refreshToken.IsRevoked || refreshToken.ExpiresAt <= DateTime.UtcNow)
+        {
+            if (_auditLogService is not null)
+            {
+                await _auditLogService.RecordAuthenticationEventAsync(
+                    AuthenticationAuditActions.TokenRefreshFailed,
+                    userId: null,
+                    actorEmail: null,
+                    actorRole: null,
+                    reason: "InvalidOrExpiredToken",
+                    cancellationToken: cancellationToken);
+            }
+
+            throw new RefreshTokenExpiredException();
+        }
+
+        var user = await _userRepository.GetByIdAsync(refreshToken.UserId, cancellationToken);
+
+        if (user is null)
+        {
+            if (_auditLogService is not null)
+            {
+                await _auditLogService.RecordAuthenticationEventAsync(
+                    AuthenticationAuditActions.TokenRefreshFailed,
+                    userId: null,
+                    actorEmail: null,
+                    actorRole: null,
+                    reason: "UserNotFound",
+                    cancellationToken: cancellationToken);
+            }
+
+            throw new InvalidCredentialsException();
+        }
+
+        var tokenResult = _jwtTokenGenerator.GenerateToken(user);
+
+        var newRefreshTokenValue = GenerateRefreshToken();
+
+        var newRefreshToken = new RefreshToken
+        {
+            UserId = user.Id,
+            Token = newRefreshTokenValue,
+            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            IsRevoked = false
+        };
+
+        refreshToken.IsRevoked = true;
+
+        await _refreshTokenRepository.AddAsync(newRefreshToken, cancellationToken);
+        await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+
+        if (_auditLogService is not null)
+        {
+            await _auditLogService.RecordAuthenticationEventAsync(
+                AuthenticationAuditActions.TokenRefreshSucceeded,
+                userId: user.Id,
+                actorEmail: user.Email,
+                actorRole: user.Role,
+                reason: null,
+                cancellationToken: cancellationToken);
+        }
+
+        return new LoginResponse
+        {
+            Token = tokenResult.Token,
+            ExpiresAt = tokenResult.ExpiresAt,
+            RefreshToken = newRefreshTokenValue
+        };
+    }
+
+    public async Task LogoutAsync(LogoutRequest request, CancellationToken cancellationToken = default)
+    {
+        var refreshToken = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
+
+        if (refreshToken is null)
+        {
+            throw new RefreshTokenExpiredException();
+        }
+        if (refreshToken.IsRevoked)
+        {
+            throw new RefreshTokenExpiredException();
+        }
+        if (refreshToken.ExpiresAt <= DateTime.UtcNow)
+        {
+            throw new RefreshTokenExpiredException();
+        }
+
+        var user = await _userRepository.GetByIdAsync(refreshToken.UserId, cancellationToken);
+
+        if (user is null)
+        {
+            throw new InvalidCredentialsException();
+        }
+
+        refreshToken.IsRevoked = true;
+
+        await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+
+        if (_auditLogService is not null)
+        {
+            await _auditLogService.RecordAuthenticationEventAsync(
+                AuthenticationAuditActions.LogoutSucceeded,
+                userId: user.Id,
+                actorEmail: user.Email,
+                actorRole: user.Role,
+                reason: null,
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    public Task<MeResponse> GetMeAsync(CancellationToken cancellationToken = default)
+    {
+        var response = new MeResponse
+        {
+            UserId = _currentUserService.UserId,
+            Email = _currentUserService.Email,
+            Role = _currentUserService.Role
+        };
+
+        return Task.FromResult(response);
+    }
+
+    private static string GenerateRefreshToken()
+    {
+        return Convert.ToBase64String(RandomNumberGenerator.GetBytes(64));
+    }
+}

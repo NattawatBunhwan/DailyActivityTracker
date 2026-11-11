@@ -1,0 +1,131 @@
+using DailyActivityTracker.Application.Common;
+using DailyActivityTracker.Application.Exceptions;
+using DailyActivityTracker.Application.Features.Activities.DTOs;
+using DailyActivityTracker.Application.Interfaces.Repositories;
+using DailyActivityTracker.Domain.Entities;
+
+namespace DailyActivityTracker.Application.Features.Activities.Services;
+
+public class ActivityService : IActivityService
+{
+    private readonly IActivityRepository _activityRepository;
+    private readonly IUserRepository _userRepository;
+
+    public ActivityService(IActivityRepository activityRepository, IUserRepository userRepository)
+    {
+        _activityRepository = activityRepository;
+        _userRepository = userRepository;
+    }
+
+    public async Task<ActivityResponse> CreateAsync(Guid userId, CreateActivityRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+
+        if (user is null)
+        {
+            throw new UserNotFoundException($"User with id {userId} was not found.");
+        }
+        
+        var activity = new Activity
+        {
+            UserId = userId,
+            Title = request.Title,
+            Description = request.Description,
+            ActivityDate = DateTime.SpecifyKind(request.ActivityDate, DateTimeKind.Utc),
+            Status = request.Status,
+            Priority = request.Priority
+        };
+
+        await _activityRepository.AddAsync(activity, cancellationToken);
+
+        return MapToResponse(activity);
+    }
+
+    public async Task<ActivitiesListResponse> GetAllAsync(Guid userId, ActivityQueryParameters query, CancellationToken cancellationToken = default)
+    {
+        var activities = await _activityRepository.GetAllByUserIdAsync(userId, query, cancellationToken);
+
+        var totalCount = await _activityRepository.CountByUserIdAsync(userId, query, cancellationToken);
+
+        var availableStatuses = await _activityRepository.GetAvailableStatusesByUserIdAsync(userId, query, cancellationToken);
+
+        var availablePriorities = await _activityRepository.GetAvailablePrioritiesByUserIdAsync(userId, query, cancellationToken);
+
+        return new ActivitiesListResponse
+        {
+            Activities = new PagedResponse<ActivityResponse>
+            {
+                Items = activities.Select(MapToResponse).ToList(),
+                Page = query.Page,
+                PageSize = query.PageSize,
+                TotalCount = totalCount,
+                TotalPages = (int)Math.Ceiling(
+                    (double)totalCount / query.PageSize)
+            },
+            AvailableStatuses = availableStatuses,
+            AvailablePriorities = availablePriorities
+        };
+    }
+
+    public Task<ActivitySummaryResponse> GetSummaryByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        return _activityRepository.GetSummaryByUserIdAsync(userId, cancellationToken);
+    }
+
+    public async Task<ActivityResponse?> GetByIdAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var activity = await _activityRepository.GetByIdAndUserIdAsync(activityId, userId, cancellationToken);
+
+        return activity is null ? null : MapToResponse(activity);
+    }
+
+    public async Task<ActivityResponse?> UpdateAsync(Guid activityId, Guid userId, UpdateActivityRequest request, CancellationToken cancellationToken = default)
+    {
+        var activity = await _activityRepository.GetByIdAndUserIdAsync(activityId, userId, cancellationToken);
+
+        if (activity is null)
+        {
+            return null;
+        }
+
+        activity.Title = request.Title;
+        activity.Description = request.Description;
+        activity.ActivityDate = DateTime.SpecifyKind(request.ActivityDate, DateTimeKind.Utc);
+        activity.Status = request.Status;
+        activity.Priority = request.Priority;
+
+        await _activityRepository.UpdateAsync(activity, cancellationToken);
+
+        return MapToResponse(activity);
+    }
+
+    public async Task<bool> DeleteAsync(Guid activityId, Guid userId, CancellationToken cancellationToken = default)
+    {
+        var activity = await _activityRepository.GetByIdAndUserIdAsync(activityId, userId, cancellationToken);
+
+        if (activity is null)
+        {
+            return false;
+        }
+
+        await _activityRepository.DeleteAsync(activity, cancellationToken);
+
+        return true;
+    }
+
+    private static ActivityResponse MapToResponse(Activity activity)
+    {
+        return new ActivityResponse
+        {
+            Id = activity.Id,
+            UserId = activity.UserId,
+            CreatedAt = activity.CreatedAt,
+            UpdatedAt = activity.UpdatedAt,
+            Title = activity.Title,
+            Description = activity.Description,
+            ActivityDate = activity.ActivityDate,
+            Status = activity.Status,
+            Priority = activity.Priority
+        };
+    }
+}

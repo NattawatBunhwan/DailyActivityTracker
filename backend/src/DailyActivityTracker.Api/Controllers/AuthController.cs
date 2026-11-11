@@ -1,0 +1,54 @@
+using DailyActivityTracker.Application.DTOs.Auth;
+using DailyActivityTracker.Application.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace DailyActivityTracker.Api.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public class AuthController : ControllerBase
+{
+    private readonly IAuthService _authService;
+
+    public AuthController(IAuthService authService)
+    {
+        _authService = authService;
+    }
+
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponse>> Login([FromBody]LoginRequest request, CancellationToken cancellationToken = default)
+    {
+        var response = await _authService.LoginAsync(request, cancellationToken);
+
+        return response;
+    }
+
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<ActionResult<LoginResponse>> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken)
+    {
+        var response = await _authService.RefreshAsync(request, cancellationToken);
+
+        return Ok(response);
+    }
+
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody]LogoutRequest request, CancellationToken cancellationToken)
+    {
+        await _authService.LogoutAsync(request, cancellationToken);
+
+        return NoContent();
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<ActionResult<MeResponse>> GetMe(CancellationToken cancellationToken)
+    {
+        var response = await _authService.GetMeAsync(cancellationToken);
+
+        return Ok(response);
+    }
+}

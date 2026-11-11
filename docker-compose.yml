@@ -1,0 +1,22 @@
+name: dailyactivitytracker-dev
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: dailyactivity-postgres
+    restart: always
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Error: Set POSTGRES_PASSWORD in your environment or .env file}"
+      POSTGRES_DB: ${POSTGRES_DB:-DailyActivityTracker}
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+    name: dailyactivitytracker_postgres_data

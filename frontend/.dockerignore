@@ -1,0 +1,28 @@
+# Git
+.git
+.gitignore
+
+# Dependencies & build outputs
+node_modules/
+dist/
+
+# Logs & test results
+*.log
+coverage/
+
+# Local environment files
+.env
+.env.local
+.env.*.local
+.env.development
+.env.development.local
+
+# Editor files
+.vscode/
+.idea/
+*.suo
+*.user
+
+# OS files
+.DS_Store
+Thumbs.db
