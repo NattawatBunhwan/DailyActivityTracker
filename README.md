@@ -38,9 +38,14 @@ The application uses HMAC-SHA256 for signing JWT bearer tokens. A cryptographica
 
 **Generating a Secure Secret Key:**
 
-- **PowerShell (Windows):**
+- **PowerShell (Windows - compatible with Windows PowerShell 5.1 and PowerShell 7+):**
+  *(Note: Windows PowerShell 5.1 does not support `[System.Security.Cryptography.RandomNumberGenerator]::Fill`. The following command uses `Create()` and `GetBytes()` for compatibility across all PowerShell versions)*
   ```powershell
-  $bytes = [byte[]]::new(32); [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes); [Convert]::ToBase64String($bytes)
+  $rng = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+  $bytes = New-Object byte[] 32
+  $rng.GetBytes($bytes)
+  [Convert]::ToBase64String($bytes)
+  $rng.Dispose()
   ```
 - **Bash / macOS / Linux:**
   ```bash
@@ -99,6 +104,32 @@ cd frontend
 npm install
 npm run dev
 ```
+
+#### Dependency & Security Verification
+
+After running `npm install`, you may optionally verify dependencies and security advisories:
+
+```bash
+npm audit
+```
+
+If vulnerabilities are reported and npm indicates that compatible, non-breaking fixes are available, apply them using:
+
+```bash
+npm audit fix
+```
+
+Then verify the resolved state and test the production build:
+
+```bash
+npm audit
+npm run build
+```
+
+> **Important Notes on npm Output & Security:**
+> - `npm audit fix` only applies semver-compatible dependency updates. Not every vulnerability can always be resolved automatically without breaking changes or upstream package releases.
+> - **Do not use `npm audit fix --force`** without thoroughly reviewing breaking changes, as it can install major version bumps that break project dependencies.
+> - Informational messages such as npm funding notices (`npm fund`) or notices indicating newer npm versions are available are normal informational messages, not installation errors. Upgrading npm globally is not required.
 
 ### 5. Running Tests
 
