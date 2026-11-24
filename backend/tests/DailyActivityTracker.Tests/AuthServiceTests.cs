@@ -179,6 +179,10 @@ public class AuthServiceTests
             .Setup(repo => repo.GetByTokenAsync(existingToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingRefreshToken);
 
+        _refreshTokenRepositoryMock
+            .Setup(repo => repo.TryRevokeAndRotateAsync(existingToken, It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
         _userRepositoryMock
             .Setup(repo => repo.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);
@@ -202,16 +206,12 @@ public class AuthServiceTests
         Assert.False(string.IsNullOrWhiteSpace(response.RefreshToken));
         Assert.NotEqual(existingToken, response.RefreshToken);
 
-        // Existing token must be revoked
-        Assert.True(existingRefreshToken.IsRevoked);
-
-        // New token must be added and changes saved
-        _refreshTokenRepositoryMock.Verify(repo => repo.AddAsync(It.Is<RefreshToken>(rt =>
+        // New token must be rotated atomically
+        _refreshTokenRepositoryMock.Verify(repo => repo.TryRevokeAndRotateAsync(existingToken, It.Is<RefreshToken>(rt =>
             rt.UserId == userId &&
             rt.Token == response.RefreshToken &&
             !rt.IsRevoked &&
             rt.ExpiresAt > DateTime.UtcNow), It.IsAny<CancellationToken>()), Times.Once);
-        _refreshTokenRepositoryMock.Verify(repo => repo.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

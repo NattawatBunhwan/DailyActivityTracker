@@ -56,10 +56,8 @@ describe("httpClient authenticatedFetch", () => {
 
         const onSessionRefreshed = vi.fn()
         const onSessionExpired = vi.fn()
-        const getRefreshToken = vi.fn().mockReturnValue("valid-refresh-token")
 
         setAuthSessionCallbacks({
-            getRefreshToken,
             onSessionRefreshed,
             onSessionExpired,
         })
@@ -67,7 +65,6 @@ describe("httpClient authenticatedFetch", () => {
         vi.spyOn(authApi, "refreshAccessToken").mockResolvedValue({
             token: "new-access-token",
             expiresAt: "2026-10-31T23:30:00Z",
-            refreshToken: "new-refresh-token",
         })
 
         const response = await authenticatedFetch(
@@ -78,11 +75,10 @@ describe("httpClient authenticatedFetch", () => {
 
         expect(response.status).toBe(200)
         expect(fetchMock).toHaveBeenCalledTimes(2)
-        expect(authApi.refreshAccessToken).toHaveBeenCalledWith("valid-refresh-token")
+        expect(authApi.refreshAccessToken).toHaveBeenCalledTimes(1)
         expect(onSessionRefreshed).toHaveBeenCalledWith({
             token: "new-access-token",
             expiresAt: "2026-10-31T23:30:00Z",
-            refreshToken: "new-refresh-token",
         })
         expect(onSessionExpired).not.toHaveBeenCalled()
 
@@ -100,7 +96,6 @@ describe("httpClient authenticatedFetch", () => {
 
         const onSessionExpired = vi.fn()
         setAuthSessionCallbacks({
-            getRefreshToken: () => "refresh-token",
             onSessionRefreshed: vi.fn(),
             onSessionExpired,
         })
@@ -108,7 +103,6 @@ describe("httpClient authenticatedFetch", () => {
         vi.spyOn(authApi, "refreshAccessToken").mockResolvedValue({
             token: "refreshed-token",
             expiresAt: "2026-10-31T23:30:00Z",
-            refreshToken: "new-refresh-token",
         })
 
         const response = await authenticatedFetch("https://example.com/api/test", {}, "expired-token")
@@ -135,12 +129,10 @@ describe("httpClient authenticatedFetch", () => {
             return {
                 token: "shared-refreshed-token",
                 expiresAt: "2026-10-31T23:30:00Z",
-                refreshToken: "rotated-refresh-token",
             }
         })
 
         setAuthSessionCallbacks({
-            getRefreshToken: () => "active-refresh-token",
             onSessionRefreshed: vi.fn(),
             onSessionExpired: vi.fn(),
         })
@@ -163,7 +155,6 @@ describe("httpClient authenticatedFetch", () => {
 
         const onSessionExpired = vi.fn()
         setAuthSessionCallbacks({
-            getRefreshToken: () => "invalid-refresh-token",
             onSessionRefreshed: vi.fn(),
             onSessionExpired,
         })
@@ -175,27 +166,6 @@ describe("httpClient authenticatedFetch", () => {
         expect(response.status).toBe(401)
         expect(onSessionExpired).toHaveBeenCalledTimes(1)
         expect(fetchMock).toHaveBeenCalledTimes(1) // No retry attempted when refresh fails
-    })
-
-    it("clears session immediately when no refresh token is available", async () => {
-        const fetchMock = vi.fn().mockResolvedValue(new Response("Unauthorized", { status: 401 }))
-        vi.stubGlobal("fetch", fetchMock)
-
-        const onSessionExpired = vi.fn()
-        setAuthSessionCallbacks({
-            getRefreshToken: () => "",
-            onSessionRefreshed: vi.fn(),
-            onSessionExpired,
-        })
-
-        const refreshSpy = vi.spyOn(authApi, "refreshAccessToken")
-
-        const response = await authenticatedFetch("https://example.com/api/test", {}, "expired-token")
-
-        expect(response.status).toBe(401)
-        expect(onSessionExpired).toHaveBeenCalledTimes(1)
-        expect(refreshSpy).not.toHaveBeenCalled()
-        expect(fetchMock).toHaveBeenCalledTimes(1)
     })
 
     it("preserves non-401 responses (400, 403, 404, 500) without attempting refresh", async () => {
@@ -220,7 +190,6 @@ describe("httpClient authenticatedFetch", () => {
         vi.stubGlobal("fetch", fetchMock)
 
         setAuthSessionCallbacks({
-            getRefreshToken: () => "refresh-token",
             onSessionRefreshed: vi.fn(),
             onSessionExpired: vi.fn(),
         })
@@ -228,7 +197,6 @@ describe("httpClient authenticatedFetch", () => {
         vi.spyOn(authApi, "refreshAccessToken").mockResolvedValue({
             token: "refreshed-token",
             expiresAt: "2026-10-31T23:30:00Z",
-            refreshToken: "new-refresh-token",
         })
 
         const payload = JSON.stringify({ title: "New Activity" })

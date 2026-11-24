@@ -64,7 +64,6 @@ function RegisterForm({ onAuthenticated }: { onAuthenticated: () => void }) {
             auth.setIsAuthenticated(true)
             auth.setToken(loginData.token)
             auth.setExpiresAt(loginData.expiresAt)
-            auth.setRefreshToken(loginData.refreshToken)
             onAuthenticated()
         } catch (error) {
             if (registrationCompleted) {

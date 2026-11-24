@@ -5,7 +5,7 @@ import useAuth from './hooks/useAuth'
 import Activities from './components/Activities'
 import RegisterForm from './components/RegisterForm'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { CalendarCheck, CheckCircle2, ListTodo, LogOut, Menu, Shield, UserRound, UserRoundPlus, X } from "lucide-react"
+import { CalendarCheck, CheckCircle2, ListTodo, LogOut, Menu, Shield, ShieldAlert, UserRound, UserRoundPlus, X } from "lucide-react"
 import ActivityDetails from './components/ActivityDetails'
 import ActivityEditor from './components/ActivityEditor'
 import ConfirmDialog from './components/ConfirmDialog'
@@ -17,7 +17,7 @@ function App() {
   const auth = useAuth()
   const isAdmin = isUserAdmin(auth.token)
   const [showRegister, setShowRegister] = useState(false)
-  const [currentPath, setCurrentPath] = useState(window.location.pathname)
+  const [currentPath, setCurrentPath] = useState(() => window.location.pathname.replace(/\/+$/, '') || '/')
   const listScrollY = useRef(0)
   const currentPathRef = useRef(currentPath)
   const dirtyRef = useRef(false)
@@ -76,10 +76,11 @@ function App() {
   }
 
   const setRoute = useCallback((path: string, replace = false) => {
-    if (replace) window.history.replaceState(window.history.state, '', path)
-    else window.history.pushState({ from: currentPathRef.current }, '', path)
-    currentPathRef.current = path
-    setCurrentPath(path)
+    const normalizedPath = path.replace(/\/+$/, '') || '/'
+    if (replace) window.history.replaceState(window.history.state, '', normalizedPath)
+    else window.history.pushState({ from: currentPathRef.current }, '', normalizedPath)
+    currentPathRef.current = normalizedPath
+    setCurrentPath(normalizedPath)
     dirtyRef.current = false
   }, [])
 
@@ -129,7 +130,7 @@ function App() {
 
   useEffect(() => {
     const handlePopState = () => {
-      const path = window.location.pathname
+      const path = window.location.pathname.replace(/\/+$/, '') || '/'
       if (dirtyRef.current) {
         if (submittingRef.current) {
           window.history.pushState({ from: path }, '', currentPathRef.current)
@@ -259,7 +260,7 @@ function App() {
                   {isAdmin && (
                     <button
                       type="button"
-                      className={`navbar-item-btn${currentPath === '/admin/audit-logs' ? ' active' : ''}`}
+                      className={`navbar-item-btn${currentPath.toLowerCase() === '/admin/audit-logs' ? ' active' : ''}`}
                       onClick={() => {
                         setIsNavOpen(false)
                         navigateGuarded('/admin/audit-logs')
@@ -295,7 +296,14 @@ function App() {
       {toast && <div className="activity-toast-region"><div className="activity-toast" role="status"><CheckCircle2 size={19} aria-hidden="true" /><span>{toast}</span></div></div>}
       <ConfirmDialog isOpen={confirmation !== null} title={confirmation?.title ?? ''} message={confirmation?.message ?? ''} confirmLabel={confirmation?.confirmLabel ?? 'Confirm'} onCancel={cancelConfirmation} onConfirm={acceptConfirmation} triggerButton={confirmationTrigger} />
 
-      {auth.isAuthenticated ? (
+      {auth.isInitializing ? (
+        <div className="auth-container" role="status" aria-label="Loading session" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '300px' }}>
+          <div className="audit-state-icon" style={{ marginBottom: '16px' }}>
+            <CalendarCheck size={32} className="animate-spin" aria-hidden="true" />
+          </div>
+          <p style={{ color: '#4b5563', fontSize: '15px' }}>Restoring session...</p>
+        </div>
+      ) : auth.isAuthenticated ? (
         <>
           <div hidden={currentPath !== '/activities' && currentPath !== '/'}>
             <Activities mutation={listMutation} isActive={currentPath === '/activities' || currentPath === '/'} focusActivityId={focusActivityId} onFocusActivityChange={setFocusActivityId} onNotify={notify} onCreateActivity={() => { listScrollY.current = window.scrollY; navigate('/activities/new') }} onViewDetails={(id) => {
@@ -323,10 +331,49 @@ function App() {
               onSubmittingChange={busy => { submittingRef.current = busy }}
               onUpdated={(activity: Activity) => { notify('Activity updated successfully'); setFocusActivityId(activity.id); setListMutation({ kind: 'update', id: activity.id, nonce: ++mutationNonce.current }); navigateGuarded(`/activities/${activity.id}`) }}
             />
-          ) : currentPath === '/admin/audit-logs' ? (
-            <AuditHistory />
+          ) : currentPath.toLowerCase() === '/admin/audit-logs' ? (
+            isAdmin ? (
+              <AuditHistory />
+            ) : (
+              <section className="access-denied-card" role="alert" aria-labelledby="access-denied-heading">
+                <div className="access-denied-icon" aria-hidden="true">
+                  <ShieldAlert size={30} />
+                </div>
+                <span className="access-denied-badge">403 Forbidden</span>
+                <h1 id="access-denied-heading" className="access-denied-title">Access Denied</h1>
+                <p className="access-denied-description">
+                  You do not have permission to view the audit history. Administrator access is required.
+                </p>
+                <div className="access-denied-actions">
+                  <button
+                    type="button"
+                    className="access-denied-primary-btn"
+                    onClick={() => navigate('/activities')}
+                  >
+                    <ListTodo size={18} aria-hidden="true" />
+                    <span>Back to Activities</span>
+                  </button>
+                </div>
+              </section>
+            )
           ) : currentPath === '/activities' || currentPath === '/' ? null : (
-            <section className="activities"><h1>Page not found</h1><button type="button" onClick={() => navigate('/activities')}>Back to Activities</button></section>
+            <section className="access-denied-card" aria-labelledby="not-found-heading">
+              <span className="access-denied-badge access-denied-badge--neutral">404 Not Found</span>
+              <h1 id="not-found-heading" className="access-denied-title">Page not found</h1>
+              <p className="access-denied-description">
+                The page you are looking for does not exist or may have been moved.
+              </p>
+              <div className="access-denied-actions">
+                <button
+                  type="button"
+                  className="access-denied-primary-btn"
+                  onClick={() => navigate('/activities')}
+                >
+                  <ListTodo size={18} aria-hidden="true" />
+                  <span>Back to Activities</span>
+                </button>
+              </div>
+            </section>
           )}
         </>
       ) : (

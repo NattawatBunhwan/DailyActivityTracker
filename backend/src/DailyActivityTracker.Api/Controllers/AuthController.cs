@@ -1,4 +1,7 @@
+using DailyActivityTracker.Api.Filters;
+using DailyActivityTracker.Api.Services;
 using DailyActivityTracker.Application.DTOs.Auth;
+using DailyActivityTracker.Application.Exceptions;
 using DailyActivityTracker.Application.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,10 +13,12 @@ namespace DailyActivityTracker.Api.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
+    private readonly IAuthCookieService _authCookieService;
 
-    public AuthController(IAuthService authService)
+    public AuthController(IAuthService authService, IAuthCookieService? authCookieService = null)
     {
         _authService = authService;
+        _authCookieService = authCookieService ?? new AuthCookieService(Microsoft.Extensions.Options.Options.Create(new Configuration.AuthCookieSettings()));
     }
 
     [AllowAnonymous]
@@ -22,23 +27,82 @@ public class AuthController : ControllerBase
     {
         var response = await _authService.LoginAsync(request, cancellationToken);
 
-        return response;
+        if (!string.IsNullOrWhiteSpace(response.RefreshToken))
+        {
+            _authCookieService.SetRefreshTokenCookie(Response, response.RefreshToken);
+        }
+
+        return Ok(new LoginResponse
+        {
+            Token = response.Token,
+            ExpiresAt = response.ExpiresAt,
+            RefreshToken = string.Empty
+        });
     }
 
     [AllowAnonymous]
+    [ValidateOrigin]
     [HttpPost("refresh")]
-    public async Task<ActionResult<LoginResponse>> Refresh(RefreshTokenRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<LoginResponse>> Refresh([FromBody]RefreshTokenRequest? request, CancellationToken cancellationToken)
     {
-        var response = await _authService.RefreshAsync(request, cancellationToken);
+        var cookieToken = _authCookieService.GetRefreshToken(Request);
+        if (string.IsNullOrWhiteSpace(cookieToken))
+        {
+            _authCookieService.ClearRefreshTokenCookie(Response);
+            throw new RefreshTokenExpiredException();
+        }
 
-        return Ok(response);
+        var refreshRequest = new RefreshTokenRequest
+        {
+            RefreshToken = cookieToken
+        };
+
+        try
+        {
+            var response = await _authService.RefreshAsync(refreshRequest, cancellationToken);
+
+            if (!string.IsNullOrWhiteSpace(response.RefreshToken))
+            {
+                _authCookieService.SetRefreshTokenCookie(Response, response.RefreshToken);
+            }
+
+            return Ok(new LoginResponse
+            {
+                Token = response.Token,
+                ExpiresAt = response.ExpiresAt,
+                RefreshToken = string.Empty
+            });
+        }
+        catch (RefreshTokenExpiredException)
+        {
+            _authCookieService.ClearRefreshTokenCookie(Response);
+            throw;
+        }
     }
 
-    [Authorize]
+    [AllowAnonymous]
+    [ValidateOrigin]
     [HttpPost("logout")]
-    public async Task<IActionResult> Logout([FromBody]LogoutRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Logout([FromBody]LogoutRequest? request, CancellationToken cancellationToken)
     {
-        await _authService.LogoutAsync(request, cancellationToken);
+        var cookieToken = _authCookieService.GetRefreshToken(Request);
+        var effectiveToken = !string.IsNullOrWhiteSpace(cookieToken)
+            ? cookieToken
+            : request?.RefreshToken;
+
+        _authCookieService.ClearRefreshTokenCookie(Response);
+
+        if (!string.IsNullOrWhiteSpace(effectiveToken))
+        {
+            try
+            {
+                await _authService.LogoutAsync(new LogoutRequest { RefreshToken = effectiveToken }, cancellationToken);
+            }
+            catch (RefreshTokenExpiredException)
+            {
+                // Silently succeed if token was already expired or revoked during logout
+            }
+        }
 
         return NoContent();
     }

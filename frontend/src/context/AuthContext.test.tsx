@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
+import { StrictMode, type ReactNode } from "react"
 import { renderHook, act } from "@testing-library/react"
 import AuthProvider from "./AuthContext"
 import useAuth from "../hooks/useAuth"
@@ -17,18 +18,45 @@ describe("AuthContext Lifecycle", () => {
         vi.useRealTimers()
     })
 
-    it("initializes with default unauthenticated state", () => {
+    it("initializes with default unauthenticated state when silent refresh fails", async () => {
+        vi.spyOn(authApi, "refreshAccessToken").mockRejectedValue(new Error("No cookie"))
+
         const { result } = renderHook(() => useAuth(), {
             wrapper: AuthProvider,
         })
 
+        await act(async () => {
+            await Promise.resolve()
+        })
+
+        expect(result.current.isInitializing).toBe(false)
         expect(result.current.isAuthenticated).toBe(false)
         expect(result.current.token).toBe("")
-        expect(result.current.refreshToken).toBe("")
         expect(result.current.expiresAt).toBe("")
     })
 
+    it("restores session on mount when silent refresh succeeds with cookie", async () => {
+        vi.spyOn(authApi, "refreshAccessToken").mockResolvedValue({
+            token: "restored-token",
+            expiresAt: "2026-12-01T00:00:00Z",
+        })
+
+        const { result } = renderHook(() => useAuth(), {
+            wrapper: AuthProvider,
+        })
+
+        await act(async () => {
+            await Promise.resolve()
+        })
+
+        expect(result.current.isInitializing).toBe(false)
+        expect(result.current.isAuthenticated).toBe(true)
+        expect(result.current.token).toBe("restored-token")
+        expect(result.current.expiresAt).toBe("2026-12-01T00:00:00Z")
+    })
+
     it("updates state upon successful login and syncs latestAccessToken", () => {
+        vi.spyOn(authApi, "refreshAccessToken").mockRejectedValue(new Error("No cookie"))
         const setLatestAccessTokenSpy = vi.spyOn(httpClient, "setLatestAccessToken")
 
         const { result } = renderHook(() => useAuth(), {
@@ -38,17 +66,16 @@ describe("AuthContext Lifecycle", () => {
         act(() => {
             result.current.setIsAuthenticated(true)
             result.current.setToken("access-token-123")
-            result.current.setRefreshToken("refresh-token-456")
             result.current.setExpiresAt(new Date(Date.now() + 3600 * 1000).toISOString())
         })
 
         expect(result.current.isAuthenticated).toBe(true)
         expect(result.current.token).toBe("access-token-123")
-        expect(result.current.refreshToken).toBe("refresh-token-456")
         expect(setLatestAccessTokenSpy).toHaveBeenCalledWith("access-token-123")
     })
 
     it("clears state and syncs null latestAccessToken on logout", async () => {
+        vi.spyOn(authApi, "refreshAccessToken").mockRejectedValue(new Error("No cookie"))
         const logoutFromServerSpy = vi.spyOn(authApi, "logoutFromServer").mockResolvedValue(undefined)
         const setLatestAccessTokenSpy = vi.spyOn(httpClient, "setLatestAccessToken")
 
@@ -59,7 +86,6 @@ describe("AuthContext Lifecycle", () => {
         act(() => {
             result.current.setIsAuthenticated(true)
             result.current.setToken("token-to-clear")
-            result.current.setRefreshToken("refresh-to-clear")
             result.current.setExpiresAt(new Date(Date.now() + 3600 * 1000).toISOString())
         })
 
@@ -69,13 +95,13 @@ describe("AuthContext Lifecycle", () => {
 
         expect(result.current.isAuthenticated).toBe(false)
         expect(result.current.token).toBe("")
-        expect(result.current.refreshToken).toBe("")
         expect(result.current.expiresAt).toBe("")
-        expect(logoutFromServerSpy).toHaveBeenCalledWith("token-to-clear", "refresh-to-clear")
+        expect(logoutFromServerSpy).toHaveBeenCalledWith("token-to-clear")
         expect(setLatestAccessTokenSpy).toHaveBeenLastCalledWith(null)
     })
 
     it("registers session callbacks with httpClient on mount and cleans up on unmount", () => {
+        vi.spyOn(authApi, "refreshAccessToken").mockRejectedValue(new Error("No cookie"))
         const setCallbacksSpy = vi.spyOn(httpClient, "setAuthSessionCallbacks")
 
         const { unmount } = renderHook(() => useAuth(), {
@@ -84,7 +110,6 @@ describe("AuthContext Lifecycle", () => {
 
         expect(setCallbacksSpy).toHaveBeenCalledWith(
             expect.objectContaining({
-                getRefreshToken: expect.any(Function),
                 onSessionRefreshed: expect.any(Function),
                 onSessionExpired: expect.any(Function),
             })
@@ -96,9 +121,9 @@ describe("AuthContext Lifecycle", () => {
     })
 
     it("updates state when onSessionRefreshed callback is invoked", () => {
+        vi.spyOn(authApi, "refreshAccessToken").mockRejectedValue(new Error("No cookie"))
         let sessionCallbacks: {
-            getRefreshToken: () => string
-            onSessionRefreshed: (data: { token: string; expiresAt: string; refreshToken: string }) => void
+            onSessionRefreshed: (data: { token: string; expiresAt: string }) => void
             onSessionExpired: () => void
         } | null = null
 
@@ -113,29 +138,25 @@ describe("AuthContext Lifecycle", () => {
         act(() => {
             result.current.setIsAuthenticated(true)
             result.current.setToken("old-token")
-            result.current.setRefreshToken("old-refresh")
         })
 
         expect(sessionCallbacks).not.toBeNull()
-        expect(sessionCallbacks!.getRefreshToken()).toBe("old-refresh")
 
         act(() => {
             sessionCallbacks!.onSessionRefreshed({
                 token: "refreshed-token",
                 expiresAt: "2026-11-01T12:00:00Z",
-                refreshToken: "new-refresh-token",
             })
         })
 
         expect(result.current.token).toBe("refreshed-token")
         expect(result.current.expiresAt).toBe("2026-11-01T12:00:00Z")
-        expect(result.current.refreshToken).toBe("new-refresh-token")
     })
 
     it("triggers logout when onSessionExpired callback is invoked", async () => {
+        vi.spyOn(authApi, "refreshAccessToken").mockRejectedValue(new Error("No cookie"))
         let sessionCallbacks: {
-            getRefreshToken: () => string
-            onSessionRefreshed: (data: { token: string; expiresAt: string; refreshToken: string }) => void
+            onSessionRefreshed: (data: { token: string; expiresAt: string }) => void
             onSessionExpired: () => void
         } | null = null
 
@@ -151,7 +172,6 @@ describe("AuthContext Lifecycle", () => {
         act(() => {
             result.current.setIsAuthenticated(true)
             result.current.setToken("active-token")
-            result.current.setRefreshToken("active-refresh")
         })
 
         await act(async () => {
@@ -160,8 +180,7 @@ describe("AuthContext Lifecycle", () => {
 
         expect(result.current.isAuthenticated).toBe(false)
         expect(result.current.token).toBe("")
-        expect(result.current.refreshToken).toBe("")
-        expect(logoutFromServerSpy).toHaveBeenCalledWith("active-token", "active-refresh")
+        expect(logoutFromServerSpy).toHaveBeenCalledWith("active-token")
     })
 
     it("schedules background refresh before expiration and updates session", async () => {
@@ -169,7 +188,6 @@ describe("AuthContext Lifecycle", () => {
         const refreshAccessTokenSpy = vi.spyOn(authApi, "refreshAccessToken").mockResolvedValue({
             token: "bg-refreshed-token",
             expiresAt: new Date(Date.now() + 3600 * 1000).toISOString(),
-            refreshToken: "bg-new-refresh-token",
         })
 
         const { result } = renderHook(() => useAuth(), {
@@ -179,7 +197,6 @@ describe("AuthContext Lifecycle", () => {
         act(() => {
             result.current.setIsAuthenticated(true)
             result.current.setToken("initial-token")
-            result.current.setRefreshToken("initial-refresh")
             result.current.setExpiresAt(newExpiry)
         })
 
@@ -188,9 +205,8 @@ describe("AuthContext Lifecycle", () => {
             vi.advanceTimersByTime(60 * 1000)
         })
 
-        expect(refreshAccessTokenSpy).toHaveBeenCalledWith("initial-refresh")
+        expect(refreshAccessTokenSpy).toHaveBeenCalled()
         expect(result.current.token).toBe("bg-refreshed-token")
-        expect(result.current.refreshToken).toBe("bg-new-refresh-token")
     })
 
     it("logs out immediately when scheduled background refresh fails", async () => {
@@ -205,7 +221,6 @@ describe("AuthContext Lifecycle", () => {
         act(() => {
             result.current.setIsAuthenticated(true)
             result.current.setToken("initial-token")
-            result.current.setRefreshToken("initial-refresh")
             result.current.setExpiresAt(newExpiry)
         })
 
@@ -215,7 +230,37 @@ describe("AuthContext Lifecycle", () => {
 
         expect(result.current.isAuthenticated).toBe(false)
         expect(result.current.token).toBe("")
-        expect(logoutFromServerSpy).toHaveBeenCalledWith("initial-token", "initial-refresh")
+        expect(logoutFromServerSpy).toHaveBeenCalledWith("initial-token")
+    })
+
+    it("deduplicates concurrent refreshAccessToken calls under React StrictMode so only one network request is sent", async () => {
+        const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue({
+            ok: true,
+            status: 200,
+            json: async () => ({
+                token: "strictmode-restored-token",
+                expiresAt: "2026-12-01T00:00:00Z",
+            }),
+        } as Response)
+
+        const StrictWrapper = ({ children }: { children: ReactNode }) => (
+            <StrictMode>
+                <AuthProvider>{children}</AuthProvider>
+            </StrictMode>
+        )
+
+        const { result } = renderHook(() => useAuth(), {
+            wrapper: StrictWrapper,
+        })
+
+        await act(async () => {
+            await Promise.resolve()
+        })
+
+        expect(fetchSpy).toHaveBeenCalledTimes(1)
+        expect(result.current.isInitializing).toBe(false)
+        expect(result.current.isAuthenticated).toBe(true)
+        expect(result.current.token).toBe("strictmode-restored-token")
     })
 })
 
