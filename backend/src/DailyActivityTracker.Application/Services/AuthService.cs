@@ -112,7 +112,9 @@ public class AuthService : IAuthService
 
     public async Task<LoginResponse> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
     {
-        var refreshToken = await _refreshTokenRepository.GetByTokenAsync(request.RefreshToken, cancellationToken);
+        var rawToken = request.RefreshToken?.Trim() ?? string.Empty;
+
+        var refreshToken = await _refreshTokenRepository.GetByTokenAsync(rawToken, cancellationToken);
 
         if (refreshToken is null)
         {
@@ -176,10 +178,22 @@ public class AuthService : IAuthService
             IsRevoked = false
         };
 
-        refreshToken.IsRevoked = true;
+        var rotated = await _refreshTokenRepository.TryRevokeAndRotateAsync(rawToken, newRefreshToken, cancellationToken);
+        if (!rotated)
+        {
+            if (_auditLogService is not null)
+            {
+                await _auditLogService.RecordAuthenticationEventAsync(
+                    AuthenticationAuditActions.TokenRefreshFailed,
+                    userId: null,
+                    actorEmail: null,
+                    actorRole: null,
+                    reason: "InvalidOrExpiredToken",
+                    cancellationToken: cancellationToken);
+            }
 
-        await _refreshTokenRepository.AddAsync(newRefreshToken, cancellationToken);
-        await _refreshTokenRepository.SaveChangesAsync(cancellationToken);
+            throw new RefreshTokenExpiredException();
+        }
 
         if (_auditLogService is not null)
         {

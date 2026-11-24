@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react"
-import { ArrowLeft, CalendarDays, CalendarPlus, CalendarClock, Pencil, Trash2 } from "lucide-react"
+import { AlertCircle, ArrowLeft, CalendarDays, CalendarPlus, CalendarClock, ListTodo, Pencil, RotateCcw, Trash2 } from "lucide-react"
 import { deleteActivity, getActivityById } from "../api/activityApi"
 import type { Activity } from "../types/activity"
 import { getPriorityLabel, getStatusLabel } from "../utils/activity"
@@ -34,6 +34,7 @@ export default function ActivityDetails({ activityId, mode, onBack, onEdit, onDe
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [notFound, setNotFound] = useState(false)
+    const [invalidLink, setInvalidLink] = useState(false)
     const [deleting, setDeleting] = useState(false)
     const [deleteOpen, setDeleteOpen] = useState(false)
     const [deleteError, setDeleteError] = useState<string | null>(null)
@@ -50,12 +51,14 @@ export default function ActivityDetails({ activityId, mode, onBack, onEdit, onDe
         setLoading(true)
         setError(null)
         setNotFound(false)
+        setInvalidLink(false)
         if (!auth.token) {
             setError("Please sign in to view this activity.")
             setLoading(false)
             return
         }
         if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(activityId)) {
+            setInvalidLink(true)
             setError("This activity link is invalid.")
             setLoading(false)
             return
@@ -103,11 +106,42 @@ export default function ActivityDetails({ activityId, mode, onBack, onEdit, onDe
     }
 
     if (loading || loadedActivityId !== activityId) return <section className="activity-details"><p role="status">Loading activity…</p></section>
-    if (error || !activity) return <section className="activity-details"><div className="details-message">
-        <p role="alert">{notFound ? "This activity may have been deleted or is no longer available." : error ?? "Could not load this activity."}</p>
-        {!notFound && <button type="button" onClick={() => void load()}>Retry</button>}
-        <button type="button" onClick={notFound ? onUnavailable : onBack}>{notFound ? "Back to Activities" : "Back"}</button>
-    </div></section>
+    if (error || !activity) return (
+        <section className="activity-details">
+            <div className="access-denied-card details-message">
+                <div className="access-denied-icon" aria-hidden="true">
+                    <AlertCircle size={30} />
+                </div>
+                <span className={`access-denied-badge${notFound || invalidLink ? " access-denied-badge--neutral" : ""}`}>
+                    {notFound ? "404 Not Found" : invalidLink ? "Invalid URL" : "Load Error"}
+                </span>
+                <h1 className="access-denied-title">
+                    {notFound ? "Activity not found" : invalidLink ? "Invalid activity link" : "Unable to load activity"}
+                </h1>
+                <p className="access-denied-description" role="alert">
+                    {notFound
+                        ? "This activity may have been deleted or is no longer available."
+                        : error ?? "Could not load this activity."}
+                </p>
+                <div className="access-denied-actions">
+                    {!notFound && (
+                        <button type="button" className="access-denied-secondary-btn" onClick={() => void load()}>
+                            <RotateCcw size={17} aria-hidden="true" />
+                            <span>Retry</span>
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        className="access-denied-primary-btn"
+                        onClick={notFound ? onUnavailable : onBack}
+                    >
+                        <ListTodo size={18} aria-hidden="true" />
+                        <span>{notFound ? "Back to Activities" : "Back"}</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+    )
 
     if (mode === "edit") return <ActivityEditor
         key={`edit-${activity.id}-${activity.updatedAt ?? activity.createdAt}`}

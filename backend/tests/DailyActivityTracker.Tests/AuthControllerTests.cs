@@ -1,10 +1,12 @@
 using DailyActivityTracker.Api.Controllers;
+using DailyActivityTracker.Api.Services;
 using DailyActivityTracker.Application.Common;
 using DailyActivityTracker.Application.DTOs.Auth;
 using DailyActivityTracker.Application.Exceptions;
 using DailyActivityTracker.Application.Interfaces.Services;
 using DailyActivityTracker.Domain.Common;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
 
@@ -13,18 +15,24 @@ namespace DailyActivityTracker.Tests;
 public class AuthControllerTests
 {
     private readonly Mock<IAuthService> _authServiceMock;
+    private readonly Mock<IAuthCookieService> _authCookieServiceMock;
     private readonly AuthController _controller;
 
     public AuthControllerTests()
     {
         _authServiceMock = new Mock<IAuthService>();
-        _controller = new AuthController(_authServiceMock.Object);
+        _authCookieServiceMock = new Mock<IAuthCookieService>();
+        _controller = new AuthController(_authServiceMock.Object, _authCookieServiceMock.Object);
+        _controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext()
+        };
     }
 
     #region Endpoint Logic & Response Tests
 
     [Fact]
-    public async Task Login_WhenServiceSucceeds_ReturnsLoginResponse()
+    public async Task Login_WhenServiceSucceeds_ReturnsLoginResponseAndSetsCookie()
     {
         // Arrange
         var request = new LoginRequest
@@ -49,8 +57,11 @@ public class AuthControllerTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(expectedResponse, result.Value);
-        _authServiceMock.Verify(s => s.LoginAsync(request, It.IsAny<CancellationToken>()), Times.Once);
+        var okResult = Assert.IsType<OkObjectResult>(result.Result);
+        var responseValue = Assert.IsType<LoginResponse>(okResult.Value);
+        Assert.Equal("jwt.token.here", responseValue.Token);
+        Assert.Equal(string.Empty, responseValue.RefreshToken); // RefreshToken omitted from JSON
+        _authCookieServiceMock.Verify(c => c.SetRefreshTokenCookie(It.IsAny<HttpResponse>(), "refresh.token.here", null), Times.Once);
     }
 
     [Fact]
@@ -72,89 +83,89 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public async Task Refresh_WhenServiceSucceeds_ReturnsOkWithLoginResponse()
+    public async Task Refresh_WhenCookiePresentAndServiceSucceeds_ReturnsOkAndRotatesCookie()
     {
         // Arrange
-        var request = new RefreshTokenRequest
-        {
-            RefreshToken = "valid.refresh.token"
-        };
+        _authCookieServiceMock
+            .Setup(c => c.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns("cookie.refresh.token");
 
         var expectedResponse = new LoginResponse
         {
             Token = "new.jwt.token",
             ExpiresAt = DateTime.UtcNow.AddHours(1),
-            RefreshToken = "new.refresh.token"
+            RefreshToken = "new.cookie.token"
         };
 
         _authServiceMock
-            .Setup(s => s.RefreshAsync(request, It.IsAny<CancellationToken>()))
+            .Setup(s => s.RefreshAsync(It.Is<RefreshTokenRequest>(r => r.RefreshToken == "cookie.refresh.token"), It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedResponse);
 
         // Act
-        var result = await _controller.Refresh(request, CancellationToken.None);
+        var result = await _controller.Refresh(null, CancellationToken.None);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.Equal(expectedResponse, okResult.Value);
-        _authServiceMock.Verify(s => s.RefreshAsync(request, It.IsAny<CancellationToken>()), Times.Once);
+        var responseValue = Assert.IsType<LoginResponse>(okResult.Value);
+        Assert.Equal("new.jwt.token", responseValue.Token);
+        Assert.Equal(string.Empty, responseValue.RefreshToken);
+        _authCookieServiceMock.Verify(c => c.SetRefreshTokenCookie(It.IsAny<HttpResponse>(), "new.cookie.token", null), Times.Once);
     }
 
     [Fact]
-    public async Task Refresh_WhenTokenIsExpiredOrRevoked_PropagatesRefreshTokenExpiredException()
+    public async Task Refresh_WhenCookieMissing_ThrowsRefreshTokenExpiredExceptionAndClearsCookie()
     {
         // Arrange
-        var request = new RefreshTokenRequest
-        {
-            RefreshToken = "revoked.refresh.token"
-        };
-
-        _authServiceMock
-            .Setup(s => s.RefreshAsync(request, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new RefreshTokenExpiredException());
+        _authCookieServiceMock
+            .Setup(c => c.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns((string?)null);
 
         // Act & Assert
         await Assert.ThrowsAsync<RefreshTokenExpiredException>(() =>
-            _controller.Refresh(request, CancellationToken.None));
+            _controller.Refresh(null, CancellationToken.None));
+
+        _authCookieServiceMock.Verify(c => c.ClearRefreshTokenCookie(It.IsAny<HttpResponse>()), Times.Once);
     }
 
     [Fact]
-    public async Task Logout_WhenServiceSucceeds_ReturnsNoContent()
+    public async Task Logout_WhenCalled_ClearsCookieAndRevokesToken()
     {
         // Arrange
-        var request = new LogoutRequest
-        {
-            RefreshToken = "token.to.logout"
-        };
+        _authCookieServiceMock
+            .Setup(c => c.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns("cookie.to.logout");
 
         _authServiceMock
-            .Setup(s => s.LogoutAsync(request, It.IsAny<CancellationToken>()))
+            .Setup(s => s.LogoutAsync(It.Is<LogoutRequest>(r => r.RefreshToken == "cookie.to.logout"), It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
         // Act
-        var result = await _controller.Logout(request, CancellationToken.None);
+        var result = await _controller.Logout(null, CancellationToken.None);
 
         // Assert
         Assert.IsType<NoContentResult>(result);
-        _authServiceMock.Verify(s => s.LogoutAsync(request, It.IsAny<CancellationToken>()), Times.Once);
+        _authCookieServiceMock.Verify(c => c.ClearRefreshTokenCookie(It.IsAny<HttpResponse>()), Times.Once);
+        _authServiceMock.Verify(s => s.LogoutAsync(It.Is<LogoutRequest>(r => r.RefreshToken == "cookie.to.logout"), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
-    public async Task Logout_WhenTokenIsInvalidOrExpired_PropagatesRefreshTokenExpiredException()
+    public async Task Logout_WhenTokenIsAlreadyExpired_ClearsCookieAndSucceeds()
     {
         // Arrange
-        var request = new LogoutRequest
-        {
-            RefreshToken = "invalid.token"
-        };
+        _authCookieServiceMock
+            .Setup(c => c.GetRefreshToken(It.IsAny<HttpRequest>()))
+            .Returns("expired.token");
 
         _authServiceMock
-            .Setup(s => s.LogoutAsync(request, It.IsAny<CancellationToken>()))
+            .Setup(s => s.LogoutAsync(It.IsAny<LogoutRequest>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new RefreshTokenExpiredException());
 
-        // Act & Assert
-        await Assert.ThrowsAsync<RefreshTokenExpiredException>(() =>
-            _controller.Logout(request, CancellationToken.None));
+        // Act
+        var result = await _controller.Logout(null, CancellationToken.None);
+
+        // Assert
+        Assert.IsType<NoContentResult>(result);
+        _authCookieServiceMock.Verify(c => c.ClearRefreshTokenCookie(It.IsAny<HttpResponse>()), Times.Once);
     }
 
     [Fact]
@@ -204,12 +215,30 @@ public class AuthControllerTests
     }
 
     [Fact]
-    public void Logout_HasAuthorizeAttribute()
+    public void Refresh_HasValidateOriginAttribute()
+    {
+        var method = typeof(AuthController).GetMethod(nameof(AuthController.Refresh));
+        Assert.NotNull(method);
+        var originAttr = method.GetCustomAttributes(typeof(DailyActivityTracker.Api.Filters.ValidateOriginAttribute), inherit: false);
+        Assert.NotEmpty(originAttr);
+    }
+
+    [Fact]
+    public void Logout_HasValidateOriginAttribute()
     {
         var method = typeof(AuthController).GetMethod(nameof(AuthController.Logout));
         Assert.NotNull(method);
-        var authAttr = method.GetCustomAttributes(typeof(AuthorizeAttribute), inherit: false);
-        Assert.NotEmpty(authAttr);
+        var originAttr = method.GetCustomAttributes(typeof(DailyActivityTracker.Api.Filters.ValidateOriginAttribute), inherit: false);
+        Assert.NotEmpty(originAttr);
+    }
+
+    [Fact]
+    public void Logout_HasAllowAnonymousAttribute()
+    {
+        var method = typeof(AuthController).GetMethod(nameof(AuthController.Logout));
+        Assert.NotNull(method);
+        var allowAnon = method.GetCustomAttributes(typeof(AllowAnonymousAttribute), inherit: false);
+        Assert.NotEmpty(allowAnon);
     }
 
     [Fact]

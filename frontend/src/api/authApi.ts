@@ -6,10 +6,9 @@ type LoginRequest = {
     password: string
 }
 
-type AuthResponse = {
+export type AuthResponse = {
     token: string
     expiresAt: string
-    refreshToken: string
 }
 
 type RegisterRequest = {
@@ -51,6 +50,7 @@ export async function login({ email, password }: LoginRequest): Promise<AuthResp
         headers: {
             'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
             email,
             password,
@@ -64,34 +64,48 @@ export async function login({ email, password }: LoginRequest): Promise<AuthResp
     return data
 }
 
-export async function refreshAccessToken(refreshToken: string): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/api/Auth/refresh`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            refreshToken
-        })
-    })
+let inflightRefreshPromise: Promise<AuthResponse> | null = null
 
-    await handleApiError(response, 'Refresh failed')
+export async function refreshAccessToken(): Promise<AuthResponse> {
+    if (inflightRefreshPromise) {
+        return inflightRefreshPromise
+    }
 
-    const data: AuthResponse = await response.json()
+    inflightRefreshPromise = (async () => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/api/Auth/refresh`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                credentials: 'include',
+            })
 
-    return data
+            await handleApiError(response, 'Refresh failed')
+
+            const data: AuthResponse = await response.json()
+
+            return data
+        } finally {
+            inflightRefreshPromise = null
+        }
+    })()
+
+    return inflightRefreshPromise
 }
 
-export async function logoutFromServer(token: string, refreshToken: string) {
+export async function logoutFromServer(token?: string) {
+    const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+    }
+    if (token) {
+        headers['Authorization'] = `Bearer ${token}`
+    }
+
     const response = await fetch(`${API_BASE_URL}/api/Auth/logout`, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-            refreshToken
-        })
+        headers,
+        credentials: 'include',
     })
 
     await handleApiError(response, 'Failed to logout from server')

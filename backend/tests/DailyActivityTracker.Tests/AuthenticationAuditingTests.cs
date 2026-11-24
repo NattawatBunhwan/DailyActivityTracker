@@ -211,6 +211,14 @@ public class AuthenticationAuditingTests
             .Setup(r => r.GetByTokenAsync(incomingRefreshToken, It.IsAny<CancellationToken>()))
             .ReturnsAsync(existingToken);
 
+        _refreshTokenRepositoryMock
+            .Setup(r => r.TryRevokeAndRotateAsync(incomingRefreshToken, It.IsAny<RefreshToken>(), It.IsAny<CancellationToken>()))
+            .Callback<string, RefreshToken, CancellationToken>((_, newToken, _) =>
+            {
+                existingToken.IsRevoked = true;
+            })
+            .ReturnsAsync(true);
+
         _userRepositoryMock
             .Setup(r => r.GetByIdAsync(userId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(user);

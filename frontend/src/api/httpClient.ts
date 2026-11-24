@@ -3,11 +3,9 @@ import { refreshAccessToken } from "./authApi"
 type AuthSessionResponse = {
     token: string
     expiresAt: string
-    refreshToken: string
 }
 
 type AuthSessionCallbacks = {
-    getRefreshToken: () => string
     onSessionRefreshed: (data: AuthSessionResponse) => void
     onSessionExpired: () => void
 }
@@ -41,15 +39,9 @@ async function requestTokenRefresh(): Promise<string | null> {
         return refreshPromise
     }
 
-    const currentRefreshToken = sessionCallbacks?.getRefreshToken()
-    if (!currentRefreshToken) {
-        clearSession()
-        return null
-    }
-
     refreshPromise = (async () => {
         try {
-            const data = await refreshAccessToken(currentRefreshToken)
+            const data = await refreshAccessToken()
             latestAccessToken = data.token
             if (sessionCallbacks) {
                 sessionCallbacks.onSessionRefreshed(data)

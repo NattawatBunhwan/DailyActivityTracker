@@ -41,6 +41,8 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IAuditQueryService, AuditQueryService>();
+builder.Services.Configure<DailyActivityTracker.Api.Configuration.AuthCookieSettings>(builder.Configuration.GetSection(DailyActivityTracker.Api.Configuration.AuthCookieSettings.SectionName));
+builder.Services.AddScoped<DailyActivityTracker.Api.Services.IAuthCookieService, DailyActivityTracker.Api.Services.AuthCookieService>();
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateUserRequestValidator>();
 builder.Services.AddControllers();
@@ -113,7 +115,8 @@ builder.Services.AddCors(options =>
         policy
             .WithOrigins(corsAllowedOrigins)
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 

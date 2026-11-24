@@ -1,4 +1,4 @@
-import { createContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
+import { createContext, useState, useEffect, useCallback, type ReactNode } from "react";
 import { logoutFromServer, refreshAccessToken } from "../api/authApi";
 import { setAuthSessionCallbacks, setLatestAccessToken } from "../api/httpClient";
 
@@ -12,10 +12,9 @@ type AuthContextType = {
     token: string
     setToken: (value: string) => void
     logout: () => void
-    refreshToken: string
     expiresAt: string
     setExpiresAt: (value: string) => void
-    setRefreshToken: (value: string) => void
+    isInitializing: boolean
 }
 
 // The context is exported for the useAuth hook, not for component rendering.
@@ -25,32 +24,25 @@ export const AuthContext = createContext<AuthContextType | null>(null)
 function AuthProvider({ children }: AuthProviderProps) {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
     const [token, setToken] = useState('')
-    const [refreshToken, setRefreshToken] = useState('')
     const [expiresAt, setExpiresAt] = useState('')
-
-    const refreshTokenRef = useRef(refreshToken)
-    useEffect(() => {
-        refreshTokenRef.current = refreshToken
-    }, [refreshToken])
+    const [isInitializing, setIsInitializing] = useState(true)
 
     const logout = useCallback(async () => {
         const activeToken = token
-        const activeRefreshToken = refreshToken
 
         // Clear the local session immediately so protected content unmounts
         // without waiting for the server logout request to complete.
         setIsAuthenticated(false)
         setToken('')
         setExpiresAt('')
-        setRefreshToken('')
         setLatestAccessToken(null)
 
         try {
-            await logoutFromServer(activeToken, activeRefreshToken)
+            await logoutFromServer(activeToken)
         } catch (error) {
             console.error('Logout failed:', error)
         }
-    }, [token, refreshToken])
+    }, [token])
 
     useEffect(() => {
         setLatestAccessToken(token || null)
@@ -58,11 +50,10 @@ function AuthProvider({ children }: AuthProviderProps) {
 
     useEffect(() => {
         setAuthSessionCallbacks({
-            getRefreshToken: () => refreshTokenRef.current,
             onSessionRefreshed: (data) => {
                 setToken(data.token)
                 setExpiresAt(data.expiresAt)
-                setRefreshToken(data.refreshToken)
+                setIsAuthenticated(true)
             },
             onSessionExpired: () => {
                 void logout()
@@ -74,8 +65,41 @@ function AuthProvider({ children }: AuthProviderProps) {
         }
     }, [logout])
 
+    // Silent session bootstrap on mount
     useEffect(() => {
-        if (expiresAt === '' || refreshToken === '') {
+        let isMounted = true
+
+        async function bootstrapSession() {
+            try {
+                const data = await refreshAccessToken()
+                if (isMounted) {
+                    setToken(data.token)
+                    setExpiresAt(data.expiresAt)
+                    setIsAuthenticated(true)
+                }
+            } catch {
+                if (isMounted) {
+                    setIsAuthenticated(false)
+                    setToken('')
+                    setExpiresAt('')
+                    setLatestAccessToken(null)
+                }
+            } finally {
+                if (isMounted) {
+                    setIsInitializing(false)
+                }
+            }
+        }
+
+        void bootstrapSession()
+
+        return () => {
+            isMounted = false
+        }
+    }, [])
+
+    useEffect(() => {
+        if (!expiresAt) {
             return
         }
 
@@ -87,23 +111,22 @@ function AuthProvider({ children }: AuthProviderProps) {
 
         async function handleRefresh() {
             try {
-                const data = await refreshAccessToken(refreshToken)
-
+                const data = await refreshAccessToken()
                 setToken(data.token)
                 setExpiresAt(data.expiresAt)
-                setRefreshToken(data.refreshToken)
+                setIsAuthenticated(true)
             } catch {
                 await logout()
             }    
         }
 
         if (delay <= 0) {
-            handleRefresh()
+            void handleRefresh()
         }
 
         if (delay > 0) {
             const timer = setTimeout(() => {
-                handleRefresh()
+                void handleRefresh()
             }, delay);
             
             return () => {
@@ -111,7 +134,7 @@ function AuthProvider({ children }: AuthProviderProps) {
             }
         }
 
-    }, [expiresAt, refreshToken, logout])
+    }, [expiresAt, logout])
 
     return (
         <AuthContext.Provider 
@@ -123,8 +146,7 @@ function AuthProvider({ children }: AuthProviderProps) {
                 logout,
                 expiresAt,
                 setExpiresAt,
-                refreshToken,
-                setRefreshToken,
+                isInitializing,
             }}
         >
             {children}
