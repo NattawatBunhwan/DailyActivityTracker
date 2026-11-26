@@ -79,8 +79,8 @@ Configured by default in `backend/src/DailyActivityTracker.Api/appsettings.Devel
 
 **Production Environments:**
 Supply production frontend origins via environment variables or hosting configuration:
-- Single origin: `Cors__AllowedOrigins__0="https://app.dailyactivitytracker.com"`
-- Multiple origins: `Cors__AllowedOrigins__0="https://app.dailyactivitytracker.com"`, `Cors__AllowedOrigins__1="https://admin.dailyactivitytracker.com"`
+- Primary frontend origin: `Cors__AllowedOrigins__0="https://app.example.com"`
+- Multiple origins (optional — e.g., if a separate hypothetical admin frontend is added in the future; not required by the current single-frontend app): `Cors__AllowedOrigins__0="https://app.example.com"`, `Cors__AllowedOrigins__1="https://admin.example.com"`
 - Alternatively, define the `Cors:AllowedOrigins` array in production deployment configuration (e.g. `appsettings.Production.json` or cloud application settings).
 
 ### 3. Running the Backend API
@@ -146,6 +146,26 @@ dotnet test backend/DailyActivityTracker.sln
 ### Overview
 In production environments, all sensitive credentials, database connection strings, and domain-specific URLs must be supplied using environment variables or cloud secret managers. Never commit production secrets, database credentials, or private keys to source control.
 
+> **Placeholder Notice:** `example.com` (`https://app.example.com` and `https://api.example.com`) is a reserved placeholder domain used across tracked configuration templates. The actual frontend domain, API domain, DNS records, TLS certificates, Cloud Run region/ingress, Forwarded Headers proxy trust, Cloud SQL connectivity, and Secret Manager entries remain deferred until the target deployment topology is finalized.
+
+### Authentication & Refresh Cookie Architecture
+- **Access Token:** Held in frontend memory only (never stored in `localStorage`, `sessionStorage`, or cookies).
+- **Refresh Token:** Stored in an `HttpOnly` cookie managed by the backend with refresh token rotation.
+- **Production Cookie Settings (`AuthCookie`):**
+  - `CookieName`: `refreshToken`
+  - `Path`: `/api/Auth`
+  - `Domain`: `null` (host-only cookie scoped strictly to the API host)
+  - `SameSite`: `Lax`
+  - `Secure`: `Always`
+  - `HttpOnly`: `true`
+  - `ExpirationDays`: `7`
+- **Client Requests & CSRF Protection:** Frontend authentication requests (`login`, `refresh`, `logout`) include `credentials: 'include'`. The backend `ValidateOriginAttribute` enforces strict `Origin` (and non-cross-site `Referer` fallback) validation against `Cors:AllowedOrigins` on state-changing cookie endpoints (`/api/Auth/refresh` and `/api/Auth/logout`).
+- **`SameSite=Lax` & Subdomain Topology:**
+  - `SameSite=Lax` supports `fetch` requests from the frontend to the API when both are served over HTTPS under the same registrable domain as same-site sibling subdomains (e.g., `https://app.example.com` calling `https://api.example.com`).
+  - Because `app.example.com` and `api.example.com` are still distinct origins (cross-origin), exact CORS configuration (`Cors:AllowedOrigins`) and `credentials: 'include'` remain required.
+  - If the frontend and API are hosted on different registrable domains (e.g., `*.web.app` calling `*.run.app` directly without a shared custom domain or same-origin proxy), browsers classify the requests as **cross-site**, and `SameSite=Lax` will not send the refresh cookie on `fetch` requests.
+  - Always perform live browser verification of refresh cookie storage and transmission after selecting the final domain and hosting topology.
+
 ### Required Backend Environment Variables
 
 When running in production (`ASPNETCORE_ENVIRONMENT=Production`):
@@ -155,15 +175,15 @@ When running in production (`ASPNETCORE_ENVIRONMENT=Production`):
 | `ASPNETCORE_ENVIRONMENT` | Configures ASP.NET Core hosting environment. | `Production` | Required (Non-secret) |
 | `ConnectionStrings__DefaultConnection` | PostgreSQL connection string for EF Core. | `Host=db.internal;Port=5432;Database=dailyactivitytracker;Username=app_user;Password=SECURE_PASSWORD;SSL Mode=Require;` | Required (**Secret**) |
 | `JwtSettings__SecretKey` | Cryptographic secret for signing JWT bearer tokens. Must be at least 32 UTF-8 bytes (256 bits). | Base64-encoded string or 32+ character random secret | Required (**Secret**) |
-| `JwtSettings__Issuer` | Expected issuer for JWT tokens. Must match token issuing authority. | `https://api.yourdomain.com` | Required (Non-secret) |
-| `JwtSettings__Audience` | Expected audience for JWT tokens. Typically the frontend client application. | `https://app.yourdomain.com` | Required (Non-secret) |
-| `Cors__AllowedOrigins__0` | Allowed browser origins for CORS. Wildcards (`*`) and paths are forbidden. | `https://app.yourdomain.com` | Required (Non-secret) |
-| `Cors__AllowedOrigins__1` | Additional allowed browser origins (if multi-origin/admin). | `https://admin.yourdomain.com` | Optional (Non-secret) |
+| `JwtSettings__Issuer` | Expected issuer for JWT tokens. Identifies the backend API token authority (replace placeholder with real API domain). | `https://api.example.com` | Required (Non-secret) |
+| `JwtSettings__Audience` | Expected audience for JWT tokens. Stable API resource identifier independent of the frontend domain or cloud provider. | `urn:dailyactivitytracker:api` | Required (Non-secret) |
+| `Cors__AllowedOrigins__0` | Allowed browser origin for the primary frontend application (CORS and `ValidateOriginAttribute`). Wildcards (`*`) and paths are forbidden. | `https://app.example.com` | Required (Non-secret) |
+| `Cors__AllowedOrigins__1` | Hypothetical optional second origin (only if a separate admin or secondary frontend is introduced in the future; not required for the current application). | `https://admin.example.com` | Optional (Non-secret) |
 
 > **Note on ASP.NET Core Environment Syntax:** Double underscores (`__`) map to nested JSON hierarchy (e.g. `ConnectionStrings__DefaultConnection` maps to `ConnectionStrings:DefaultConnection`, and `Cors__AllowedOrigins__0` maps to `Cors:AllowedOrigins[0]`).
 
 ### Production Configuration Files (`appsettings.Production.json`)
-The repository includes a template `backend/src/DailyActivityTracker.Api/appsettings.Production.json` containing structural defaults and placeholder hostnames. In containerized or cloud environments (e.g. Docker, Kubernetes, AWS, Azure), override placeholders with environment variables or cloud secret stores.
+The repository includes a template `backend/src/DailyActivityTracker.Api/appsettings.Production.json` containing structural defaults (`JwtSettings:Audience = "urn:dailyactivitytracker:api"`, host-only `AuthCookie` settings, and `example.com` placeholders). In containerized or cloud environments (e.g. Google Cloud Run, Docker, AWS, Azure), override domain placeholders and inject secrets via environment variables or cloud secret stores.
 
 ### Health Check Endpoints
 In production, container orchestrators and load balancers should be configured with the following unauthenticated health endpoints:
@@ -171,30 +191,59 @@ In production, container orchestrators and load balancers should be configured w
 - **Readiness Probe:** `GET /health/ready` (Verifies PostgreSQL database connectivity)
 
 ### Frontend Production Configuration (`VITE_API_BASE_URL`)
-The frontend is a client-side SPA (Single Page Application). Environment variables prefixed with `VITE_` are statically replaced and baked into the JavaScript bundle at build time.
+The frontend is a client-side SPA (Single Page Application) and installable PWA. `VITE_API_BASE_URL` is a **build-time** environment variable that Vite statically embeds into the compiled JavaScript bundle during `npm run build`.
 
-- **Build-Time Environment File:** A template is provided at `frontend/.env.production`.
+- **Build-Time Environment File (`frontend/.env.production`):**
   ```env
-  VITE_API_BASE_URL=https://api.yourdomain.com
+  VITE_API_BASE_URL=https://api.example.com
   ```
-- **CI/CD Pipeline Build:** Pass the backend API URL as an environment variable during `npm run build`:
-  ```bash
-  VITE_API_BASE_URL=https://api.yourdomain.com npm run build
-  ```
-- **Fail-Fast Production Resolver:** In Production builds (`import.meta.env.PROD`), if `VITE_API_BASE_URL` is omitted or empty, the application throws an explicit error (`Missing required environment variable: VITE_API_BASE_URL`) rather than silently defaulting to `localhost`.
-- **Rebuild Requirement:** Changing `VITE_API_BASE_URL` or any frontend environment variable requires rebuilding the client bundle (`npm run build`). Updating `.env` files on a running web server without rebuilding has no effect.
-- **Security Notice:** Do not place API keys, private credentials, or secrets in `VITE_*` environment variables or `.env` files. Everything compiled into the frontend bundle is publicly readable in client browsers.
+- **Supported Deployment Models:**
+  - **Direct API Subdomain Model:** Set `VITE_API_BASE_URL=https://api.example.com` (replacing `api.example.com` with your real API domain before building) when the frontend (`https://app.<domain>`) calls a separate API subdomain (`https://api.<domain>`).
+    ```bash
+    VITE_API_BASE_URL=https://api.example.com npm run build
+    ```
+  - **Same-Origin Reverse Proxy Model:** Set `VITE_API_BASE_URL=/` (or empty string `""`) when the frontend and `/api` requests share the same origin through a reverse proxy (such as the local Nginx proxy in `docker-compose.prod.yml`). `resolveApiBaseUrl` normalizes `""` and `"/"` to `""` so requests target `/api/...` on the current origin.
+    ```bash
+    VITE_API_BASE_URL=/ npm run build
+    ```
+- **Omitted vs. Empty Value Resolver Behavior:** In Production builds (`import.meta.env.PROD`), `resolveApiBaseUrl` throws an explicit error (`Missing required environment variable: VITE_API_BASE_URL`) only if `VITE_API_BASE_URL` is omitted (`undefined` or `null`), preventing accidental fallback to `https://localhost:7127`. An intentionally empty string `""` or `"/"` is valid and resolves to `""` for same-origin proxy deployments.
+- **Rebuild Requirement:** Changing a hosting environment variable after the frontend has already been built does **not** change the API URL embedded in `dist/`. Updating `VITE_API_BASE_URL` requires re-running `npm run build` and redeploying `frontend/dist/`.
+- **Security Notice:** `VITE_API_BASE_URL` is a public build-time endpoint configuration, not a secret. Do not place API keys, private credentials, or secrets in `VITE_*` variables or `.env` files.
+
+### Local Production-like Docker Compose Testing (`docker-compose.prod.yml`)
+To test the containerized production stack locally on a single host (where the Nginx `frontend` container proxies `/api/` to `http://backend:8080` over the internal Docker network):
+
+1. Create an untracked `.env.prod` file in the repository root (ignored by `.gitignore` and `.dockerignore`). Do **not** commit `.env.prod`.
+2. Supply local secrets (`POSTGRES_PASSWORD` and a 32+ byte `JWT_SECRET_KEY`) along with the local proxy and origin overrides:
+   ```env
+   POSTGRES_DB=DailyActivityTracker
+   POSTGRES_USER=app_user
+   POSTGRES_PASSWORD=<YOUR_LOCAL_TEST_DB_PASSWORD>
+   JWT_SECRET_KEY=<YOUR_LOCAL_32+_BYTE_TEST_JWT_SECRET>
+   VITE_API_BASE_URL=/
+   FRONTEND_PORT=8088
+   CORS_ALLOWED_ORIGIN=http://localhost:8088
+   ```
+   - `VITE_API_BASE_URL=/` directs the compiled frontend bundle to send API requests to `/api/...` through the same-origin Nginx reverse proxy.
+   - `FRONTEND_PORT=8088` publishes the Nginx container on host port `8088`.
+   - `CORS_ALLOWED_ORIGIN=http://localhost:8088` sets `Cors__AllowedOrigins__0` to match the exact browser `Origin` header (scheme, hostname, and non-default port) checked by `ValidateOriginAttribute` on `/api/Auth/refresh` and `/api/Auth/logout`.
+   - Production HTTPS defaults and `Secure=Always` cookie settings remain untouched in tracked files. (Chromium and Firefox allow `Secure` cookies on `http://localhost` as a potentially trustworthy origin).
+3. Build and start the stack:
+   ```powershell
+   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+   ```
 
 ---
 
 ## Production Deployment Runbook
 
 ### 1. Pre-Deployment Checklist
-- [ ] Registered public domain names for Backend API (e.g., `https://api.yourdomain.com`) and Frontend Web App (e.g., `https://app.yourdomain.com`).
-- [ ] Valid SSL/TLS certificates configured for HTTPS on both endpoints.
-- [ ] PostgreSQL production database instance provisioned (with SSL required and distinct application user credentials).
+- [ ] Target domain names and topology selected for Backend API (replacing placeholder `https://api.example.com`) and Frontend Web App (replacing placeholder `https://app.example.com`).
+- [ ] DNS records and valid SSL/TLS certificates configured for HTTPS on both endpoints.
+- [ ] Cloud Run / container ingress and Forwarded Headers trusted proxy configuration finalized for the target reverse proxy topology.
+- [ ] PostgreSQL production database instance provisioned (e.g., Cloud SQL for PostgreSQL 16) and connection strategy configured.
 - [ ] Cryptographic signing secret generated for `JwtSettings:SecretKey` (at least 32 UTF-8 bytes / 256 bits).
-- [ ] Cloud secret manager (Azure Key Vault, AWS Secrets Manager, HashiCorp Vault, or Kubernetes Secrets) configured to inject backend secrets as environment variables.
+- [ ] Cloud secret manager (Google Secret Manager, Azure Key Vault, AWS Secrets Manager, or Kubernetes Secrets) configured to inject backend secrets as environment variables.
 
 ### 2. Backend Deployment Setup
 
@@ -203,12 +252,13 @@ The frontend is a client-side SPA (Single Page Application). Environment variabl
    ASPNETCORE_ENVIRONMENT=Production
    ConnectionStrings__DefaultConnection="Host=prod-db.internal;Port=5432;Database=dailyactivitytracker;Username=app_user;Password=<STRONG_PASSWORD>;SSL Mode=Require;"
    JwtSettings__SecretKey="<SECURE_BASE64_OR_32+_CHAR_SECRET>"
-   JwtSettings__Issuer="https://api.yourdomain.com"
-   JwtSettings__Audience="https://app.yourdomain.com"
-   Cors__AllowedOrigins__0="https://app.yourdomain.com"
+   JwtSettings__Issuer="https://api.example.com"
+   JwtSettings__Audience="urn:dailyactivitytracker:api"
+   Cors__AllowedOrigins__0="https://app.example.com"
    ```
+   *(Replace `https://api.example.com` and `https://app.example.com` with your actual production API and frontend domains.)*
 2. **Apply Database Migrations:**
-   Ensure database schema migrations are applied using EF Core CLI bundles or pre-deployment migration jobs:
+   Ensure database schema migrations are applied using an out-of-band EF Core CLI migration bundle or pre-deployment migration job (rather than migrating automatically on every web instance startup):
    ```bash
    dotnet ef database update --project backend/src/DailyActivityTracker.Infrastructure --startup-project backend/src/DailyActivityTracker.Api
    ```
@@ -222,46 +272,49 @@ The frontend is a client-side SPA (Single Page Application). Environment variabl
 
 ### 3. Frontend Deployment Setup
 
-1. **Build Client Bundle with Explicit API URL:**
+1. **Build Client Bundle with Intended API URL:**
    ```bash
    cd frontend
    npm ci
-   VITE_API_BASE_URL="https://api.yourdomain.com" npm run build
+   VITE_API_BASE_URL="https://api.example.com" npm run build
    ```
+   *(Supply your actual production API URL in place of `https://api.example.com`, or `/` for a same-origin reverse proxy deployment, prior to running `npm run build`.)*
 2. **Deploy Static Assets:**
-   Deploy the contents of `frontend/dist/` to a CDN, static web host (e.g., AWS S3 + CloudFront, Azure Static Web Apps, Nginx, or Netlify).
+   Deploy the contents of `frontend/dist/` to your static web host or CDN (e.g., Firebase Hosting, AWS S3 + CloudFront, Azure Static Web Apps, or Nginx).
 3. **Configure SPA Routing (Fallback to `index.html`):**
-   Ensure all client-side navigation paths (e.g., `/audit`, `/activities`, `/login`) are rewritten to `/index.html` with HTTP 200 by your web server or CDN.
+   Ensure all client-side navigation paths (e.g., `/activities`, `/activities/new`, `/admin/audit-logs`) are rewritten to `/index.html` with HTTP 200 by your web server or CDN.
 
 ### 4. Post-Deployment Verification Steps
 
 1. **Verify Liveness Probe:**
    ```bash
-   curl -i https://api.yourdomain.com/health/live
+   curl -i https://api.example.com/health/live
    # Expect HTTP 200 with {"status":"Healthy"}
    ```
 2. **Verify Readiness Probe:**
    ```bash
-   curl -i https://api.yourdomain.com/health/ready
+   curl -i https://api.example.com/health/ready
    # Expect HTTP 200 with {"status":"Healthy"} confirming PostgreSQL connection
    ```
 3. **Verify Security Headers:**
    ```bash
-   curl -i -X OPTIONS https://api.yourdomain.com/health/live
+   curl -i -X OPTIONS https://api.example.com/health/live
    # Confirm X-Content-Type-Options: nosniff, X-Frame-Options: DENY, and Referrer-Policy headers
    ```
-4. **Verify CORS Integration:**
-   Open the deployed frontend web app in a browser (`https://app.yourdomain.com`) and confirm API authentication and data loading execute without cross-origin errors in the browser console.
+4. **Verify CORS and Refresh Cookie Integration:**
+   Open the deployed frontend web app in a browser (`https://app.example.com`) and confirm login, silent session refresh (`refreshToken` HttpOnly cookie across HTTPS sibling subdomains), logout, and activity data loading execute without cross-origin errors.
 
 ### 5. Common Troubleshooting & FAQs
 
 - **API Fails at Startup (`InvalidOperationException: JwtSettings:SecretKey is missing or empty`):**
   - Ensure `JwtSettings__SecretKey` is defined in the host's environment variables and is at least 32 bytes long.
 - **API Fails at Startup (`InvalidOperationException: Cors:AllowedOrigins is missing or empty`):**
-  - Ensure `Cors__AllowedOrigins__0` is defined with the exact frontend protocol and domain (e.g., `https://app.yourdomain.com` without trailing slash).
+  - Ensure `Cors__AllowedOrigins__0` is defined with the exact frontend protocol and domain (e.g., `https://app.example.com` without trailing slash).
+- **Refresh or Logout Returns `403 Forbidden`:**
+  - `ValidateOriginAttribute` rejected the request `Origin`. Verify that `Cors__AllowedOrigins__0` matches the exact browser origin (including scheme, hostname, and port, such as `http://localhost:8088` in local Docker Compose testing or `https://app.<domain>` in production).
 - **Frontend Fails with `Missing required environment variable: VITE_API_BASE_URL`:**
-  - The frontend was compiled without `VITE_API_BASE_URL`. Supply `VITE_API_BASE_URL` in `.env.production` or as an environment variable during `npm run build`.
+  - The frontend was compiled with `VITE_API_BASE_URL` undefined. Supply `VITE_API_BASE_URL` in `.env.production` or as a build-time environment variable during `npm run build` (use `https://api.<domain>` for subdomain deployments or `/` for same-origin proxy deployments).
 - **CORS Error in Browser:**
   - Verify that the URL in the browser address bar matches the value in `Cors__AllowedOrigins__0` (including protocol `https://` and port if non-standard).
-- **Changes to `.env` Have No Effect on Production:**
-  - Vite embeds environment variables into the static JavaScript files at build time. Re-run `npm run build` and re-deploy `dist/`.
+- **Changes to `.env` or Hosting Variables Have No Effect on Frontend API URL:**
+  - Vite embeds `VITE_API_BASE_URL` into the static JavaScript files at build time. Re-run `npm run build` with the updated value and re-deploy `dist/`.
