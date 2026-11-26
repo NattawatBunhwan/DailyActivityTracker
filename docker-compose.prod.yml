@@ -45,9 +45,9 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-DailyActivityTracker};Username=${POSTGRES_USER:-app_user};Password=${POSTGRES_PASSWORD:?Error: POSTGRES_PASSWORD is required};SSL Mode=Prefer;"
       JwtSettings__SecretKey: "${JWT_SECRET_KEY:?Error: JWT_SECRET_KEY is required and must be at least 32 bytes}"
-      JwtSettings__Issuer: ${JWT_ISSUER:-https://api.yourdomain.com}
-      JwtSettings__Audience: ${JWT_AUDIENCE:-https://app.yourdomain.com}
-      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN:-https://app.yourdomain.com}
+      JwtSettings__Issuer: ${JWT_ISSUER:-https://api.example.com}
+      JwtSettings__Audience: ${JWT_AUDIENCE:-urn:dailyactivitytracker:api}
+      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN:-https://app.example.com}
     depends_on:
       postgres:
         condition: service_healthy
