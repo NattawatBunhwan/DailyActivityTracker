@@ -1,9 +1,19 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 using DailyActivityTracker.Application.Common;
+using DailyActivityTracker.Domain.Entities;
+using DailyActivityTracker.Infrastructure.Security;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 
 namespace DailyActivityTracker.Tests;
 
 public class JwtSettingsValidatorTests
 {
+    private const string TestSecretKey = "test_only_signing_key_with_at_least_32_bytes_for_hmac_sha256";
+    private const string ExpectedIssuer = "https://api.example.com";
+    private const string ExpectedAudience = "urn:dailyactivitytracker:api";
     [Fact]
     public void ValidateSecretKey_WhenSecretKeyIsNull_ThrowsInvalidOperationException()
     {
@@ -86,6 +96,133 @@ public class JwtSettingsValidatorTests
 
         // Assert
         Assert.Equal(multibyteKey, result);
+    }
+
+    [Fact]
+    public void GenerateToken_WhenIssuerAndAudienceMatchValidationParameters_SucceedsAndPreservesClaims()
+    {
+        // Arrange
+        var generator = CreateTokenGenerator(
+            issuer: ExpectedIssuer,
+            audience: ExpectedAudience,
+            expirationMinutes: 15);
+        var user = CreateTestUser();
+        var validationParameters = CreateValidationParameters(
+            validIssuer: ExpectedIssuer,
+            validAudience: ExpectedAudience);
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        // Act
+        var tokenResult = generator.GenerateToken(user);
+        var principal = tokenHandler.ValidateToken(tokenResult.Token, validationParameters, out var validatedToken);
+
+        // Assert
+        Assert.NotNull(principal);
+        Assert.NotNull(validatedToken);
+        Assert.Equal(user.Id.ToString(), principal.FindFirstValue(ClaimTypes.NameIdentifier));
+        Assert.Equal(user.Email, principal.FindFirstValue(ClaimTypes.Email));
+        Assert.Equal(user.Role, principal.FindFirstValue(ClaimTypes.Role));
+    }
+
+    [Fact]
+    public void ValidateToken_WhenTokenHasIncorrectIssuer_ThrowsSecurityTokenInvalidIssuerException()
+    {
+        // Arrange
+        var generator = CreateTokenGenerator(
+            issuer: "https://untrusted-issuer.example.com",
+            audience: ExpectedAudience,
+            expirationMinutes: 15);
+        var user = CreateTestUser();
+        var validationParameters = CreateValidationParameters(
+            validIssuer: ExpectedIssuer,
+            validAudience: ExpectedAudience);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var tokenResult = generator.GenerateToken(user);
+
+        // Act & Assert
+        Assert.Throws<SecurityTokenInvalidIssuerException>(() =>
+            tokenHandler.ValidateToken(tokenResult.Token, validationParameters, out _));
+    }
+
+    [Fact]
+    public void ValidateToken_WhenTokenHasIncorrectAudience_ThrowsSecurityTokenInvalidAudienceException()
+    {
+        // Arrange
+        var generator = CreateTokenGenerator(
+            issuer: ExpectedIssuer,
+            audience: "https://wrong-audience.example.com",
+            expirationMinutes: 15);
+        var user = CreateTestUser();
+        var validationParameters = CreateValidationParameters(
+            validIssuer: ExpectedIssuer,
+            validAudience: ExpectedAudience);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var tokenResult = generator.GenerateToken(user);
+
+        // Act & Assert
+        Assert.Throws<SecurityTokenInvalidAudienceException>(() =>
+            tokenHandler.ValidateToken(tokenResult.Token, validationParameters, out _));
+    }
+
+    [Fact]
+    public void ValidateToken_WhenTokenIsExpired_ThrowsSecurityTokenExpiredException()
+    {
+        // Arrange
+        var generator = CreateTokenGenerator(
+            issuer: ExpectedIssuer,
+            audience: ExpectedAudience,
+            expirationMinutes: -10);
+        var user = CreateTestUser();
+        var validationParameters = CreateValidationParameters(
+            validIssuer: ExpectedIssuer,
+            validAudience: ExpectedAudience);
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var tokenResult = generator.GenerateToken(user);
+
+        // Act & Assert
+        Assert.Throws<SecurityTokenExpiredException>(() =>
+            tokenHandler.ValidateToken(tokenResult.Token, validationParameters, out _));
+    }
+
+    private static JwtTokenGenerator CreateTokenGenerator(string issuer, string audience, int expirationMinutes)
+    {
+        var settings = Options.Create(new JwtSettings
+        {
+            SecretKey = TestSecretKey,
+            Issuer = issuer,
+            Audience = audience,
+            ExpirationMinutes = expirationMinutes
+        });
+
+        return new JwtTokenGenerator(settings);
+    }
+
+    private static TokenValidationParameters CreateValidationParameters(string validIssuer, string validAudience)
+    {
+        return new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidIssuer = validIssuer,
+
+            ValidateAudience = true,
+            ValidAudience = validAudience,
+
+            ValidateLifetime = true,
+
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(TestSecretKey))
+        };
+    }
+
+    private static User CreateTestUser()
+    {
+        return new User
+        {
+            Id = Guid.NewGuid(),
+            Email = "user@example.com",
+            Role = "User"
+        };
     }
 }
 
